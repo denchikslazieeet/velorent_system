@@ -1,9 +1,15 @@
+from datetime import timedelta
+
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from .forms import AccountClaimForm
-from .models import AccountAccessCode, User
-from integrations.vk_notifications import send_vk_message
+from .models import AccountAccessCode, User, UserNotification
+from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
+from integrations.vk_notifications import notify_booking_event, send_vk_message
+from rentals.models import Booking
 
 
 class AccountClaimFormTests(TestCase):
@@ -84,3 +90,71 @@ class VKNotificationTests(TestCase):
         )
 
         self.assertFalse(send_vk_message(user, "test"))
+
+
+class UserNotificationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="customer",
+            email="customer@example.com",
+            role=User.Role.CUSTOMER,
+        )
+        self.location = PickupLocation.objects.create(name="ВелоРент - парк", address="Чита")
+        self.category = BikeCategory.objects.create(name="Городские")
+        self.tariff = Tariff.objects.create(
+            name="Городской",
+            hourly_rate=250,
+            daily_rate=1500,
+            deposit_amount=3000,
+            late_fee_per_hour=350,
+        )
+        self.bike = Bike.objects.create(
+            title="Городской Бриз",
+            slug="gorodskoy-briz-test",
+            category=self.category,
+            tariff=self.tariff,
+            current_location=self.location,
+            serial_number="TEST-BIKE-001",
+        )
+        self.booking = Booking.objects.create(
+            number="VR-1001",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now(),
+            end_at=timezone.now() + timedelta(hours=2),
+            quoted_price=500,
+            deposit_amount=3000,
+        )
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        SITE_URL="http://127.0.0.1:8000",
+        VK_GROUP_TOKEN="",
+    )
+    def test_booking_event_creates_site_notification_and_email(self):
+        result = notify_booking_event(self.booking, "confirmed")
+
+        self.assertIsInstance(result["site_notification"], UserNotification)
+        self.assertTrue(result["email_sent"])
+        self.assertFalse(result["vk_sent"])
+        self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Бронь VR-1001 подтверждена", mail.outbox[0].subject)
+
+    def test_notifications_page_marks_items_read(self):
+        UserNotification.objects.create(
+            user=self.user,
+            title="Тест",
+            message="Сообщение",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("notifications"))
+        self.assertContains(response, "Тест")
+        self.assertContains(response, "notification-badge")
+
+        response = self.client.post(reverse("notifications-read"))
+        self.assertRedirects(response, reverse("notifications"))
+        self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 0)

@@ -21,6 +21,16 @@
 </section>
 {% endif %}
 
+{% if not request.user.email %}
+<section class="card email-reminder-card" style="margin-bottom: 20px;">
+    <div>
+        <h3>Добавьте email для важных уведомлений</h3>
+        <p>Мы будем отправлять на почту подтверждения брони, выдачу велосипеда, завершение аренды и оплату.</p>
+    </div>
+    <a href="{% url 'profile' %}" class="btn btn-primary btn-sm">Указать email</a>
+</section>
+{% endif %}
+
 <section class="stats-grid stats-grid-single">
     <div class="stat-card">
         <span>Заказы</span>

@@ -5,8 +5,11 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils import timezone
+
+from accounts.models import UserNotification
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +52,10 @@ def booking_url(booking):
     return reverse("booking-detail", kwargs={"pk": booking.pk})
 
 
+def absolute_booking_url(booking):
+    return f"{settings.SITE_URL.rstrip('/')}{booking_url(booking)}"
+
+
 def format_booking_period(booking):
     start = timezone.localtime(booking.start_at).strftime("%d.%m.%Y %H:%M")
     end = timezone.localtime(booking.end_at).strftime("%d.%m.%Y %H:%M")
@@ -64,17 +71,85 @@ def build_booking_message(booking, event):
         f"Точка выдачи: {booking.pickup_location.name}"
     )
 
-    messages = {
-        "created": f"Ваша бронь создана.\n{common}\nСтоимость: {booking.quoted_price} ₽",
-        "confirmed": f"Ваша бронь подтверждена.\n{common}",
-        "issued": f"Велосипед выдан.\n{common}",
-        "completed": f"Аренда завершена.\n{common}\nИтог к оплате: {booking.rental.final_price} ₽",
-        "cancelled": f"Бронь отменена.\n{common}",
-        "no_show": f"Бронь отмечена как неявка.\n{common}",
-        "payment_paid": f"Оплата по брони подтверждена.\n{common}",
+    if event == "created":
+        return f"Ваша бронь создана.\n{common}\nСтоимость: {booking.quoted_price} ₽"
+    if event == "confirmed":
+        return f"Ваша бронь подтверждена.\n{common}"
+    if event == "issued":
+        return f"Велосипед выдан.\n{common}"
+    if event == "completed":
+        final_price = getattr(getattr(booking, "rental", None), "final_price", booking.quoted_price)
+        return f"Аренда завершена.\n{common}\nИтог к оплате: {final_price} ₽"
+    if event == "cancelled":
+        return f"Бронь отменена.\n{common}"
+    if event == "no_show":
+        return f"Бронь отмечена как неявка.\n{common}"
+    if event == "payment_paid":
+        return f"Оплата по брони подтверждена.\n{common}"
+    return f"Обновление по брони.\n{common}"
+
+
+def build_booking_title(booking, event):
+    titles = {
+        "created": f"Бронь {booking.number} создана",
+        "confirmed": f"Бронь {booking.number} подтверждена",
+        "issued": f"Велосипед выдан по брони {booking.number}",
+        "completed": f"Аренда {booking.number} завершена",
+        "cancelled": f"Бронь {booking.number} отменена",
+        "no_show": f"Неявка по брони {booking.number}",
+        "payment_paid": f"Оплата по брони {booking.number} подтверждена",
     }
-    return messages.get(event, f"Обновление по брони.\n{common}")
+    return titles.get(event, f"Обновление по брони {booking.number}")
+
+
+def create_site_notification(booking, event, title, message):
+    level = UserNotification.Level.INFO
+    if event in {"created", "confirmed", "issued", "completed", "payment_paid"}:
+        level = UserNotification.Level.SUCCESS
+    if event in {"cancelled", "no_show"}:
+        level = UserNotification.Level.WARNING
+
+    return UserNotification.objects.create(
+        user=booking.customer,
+        title=title,
+        message=message,
+        url=booking_url(booking),
+        level=level,
+    )
+
+
+def send_booking_email(booking, title, message):
+    if not booking.customer.email:
+        return False
+
+    email_body = (
+        f"{message}\n\n"
+        f"Открыть бронь: {absolute_booking_url(booking)}\n\n"
+        "Если вы не оформляли бронь, свяжитесь с оператором ВелоРент."
+    )
+
+    try:
+        sent_count = send_mail(
+            subject=f"ВелоРент: {title}",
+            message=email_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[booking.customer.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception("Email notification failed for user %s", booking.customer_id)
+        return False
+    return sent_count > 0
 
 
 def notify_booking_event(booking, event):
-    return send_vk_message(booking.customer, build_booking_message(booking, event))
+    title = build_booking_title(booking, event)
+    message = build_booking_message(booking, event)
+    site_notification = create_site_notification(booking, event, title, message)
+    email_sent = send_booking_email(booking, title, message)
+    vk_sent = send_vk_message(booking.customer, message)
+    return {
+        "site_notification": site_notification,
+        "email_sent": email_sent,
+        "vk_sent": vk_sent,
+    }

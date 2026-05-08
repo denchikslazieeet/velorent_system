@@ -17,6 +17,15 @@
 </section>
 {% endif %}
 
+{% if not request.user.email %}
+<section class="card email-reminder-card" style="margin-bottom: 20px;">
+    <div>
+        <h3>Email помогает не пропустить бронь</h3>
+        <p>Если указать email, важные уведомления будут приходить и на почту, и в раздел уведомлений на сайте.</p>
+    </div>
+</section>
+{% endif %}
+
 <form method="post" class="card form-card auth-form">
     {% csrf_token %}
 

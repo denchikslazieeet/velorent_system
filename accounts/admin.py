@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import AccountAccessCode, User
+from .models import AccountAccessCode, User, UserNotification
 
 
 @admin.register(User)
@@ -34,3 +34,11 @@ class AccountAccessCodeAdmin(admin.ModelAdmin):
     @admin.display(description="Код выдал")
     def created_by_display(self, obj):
         return obj.created_by.staff_display if obj.created_by else "-"
+
+
+@admin.register(UserNotification)
+class UserNotificationAdmin(admin.ModelAdmin):
+    list_display = ("user", "title", "level", "created_at", "read_at")
+    list_filter = ("level", "created_at", "read_at")
+    search_fields = ("user__username", "user__phone", "user__email", "title", "message")
+    readonly_fields = ("user", "title", "message", "url", "level", "created_at", "read_at")

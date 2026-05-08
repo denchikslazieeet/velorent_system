@@ -7,11 +7,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, FormView, UpdateView
+from django.views.generic import CreateView, FormView, ListView, UpdateView
 
 from .forms import AccountClaimForm, ProfileForm, UserLoginForm, UserRegisterForm
-from .models import User
+from .models import User, UserNotification
 from .vk_oauth import VKOAuthError, build_authorize_url, exchange_code, get_user_profile
 from integrations.vk_notifications import send_vk_message
 
@@ -310,3 +311,35 @@ class ProfileView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Профиль обновлен.")
         return super().form_valid(form)
+
+
+class NotificationsListView(LoginRequiredMixin, ListView):
+    template_name = 'accounts/notifications.html'
+    context_object_name = 'notifications'
+    paginate_by = 12
+
+    def get_queryset(self):
+        return self.request.user.notifications.all()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['unread_total'] = self.request.user.notifications.filter(read_at__isnull=True).count()
+        if context.get('is_paginated'):
+            paginator = context['paginator']
+            page_number = context['page_obj'].number
+            context['page_range'] = paginator.get_elided_page_range(
+                page_number,
+                on_each_side=1,
+                on_ends=1,
+            )
+        return context
+
+
+class MarkNotificationsReadView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        UserNotification.objects.filter(
+            user=request.user,
+            read_at__isnull=True,
+        ).update(read_at=timezone.now())
+        messages.success(request, "Уведомления отмечены как прочитанные.")
+        return redirect('notifications')

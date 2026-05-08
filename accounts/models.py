@@ -145,3 +145,40 @@ class AccountAccessCode(models.Model):
             expires_at=now + timedelta(minutes=settings.ACCOUNT_ACCESS_CODE_TTL_MINUTES),
         )
         return access_code, raw_code
+
+
+class UserNotification(models.Model):
+    class Level(models.TextChoices):
+        INFO = "info", "Информация"
+        SUCCESS = "success", "Успешно"
+        WARNING = "warning", "Важно"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        verbose_name="Пользователь",
+    )
+    title = models.CharField("Заголовок", max_length=160)
+    message = models.TextField("Сообщение")
+    url = models.CharField("Ссылка", max_length=255, blank=True)
+    level = models.CharField("Тип", max_length=20, choices=Level.choices, default=Level.INFO)
+    read_at = models.DateTimeField("Прочитано", null=True, blank=True)
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Уведомление пользователя"
+        verbose_name_plural = "Уведомления пользователей"
+
+    def __str__(self):
+        return f"{self.user} / {self.title}"
+
+    @property
+    def is_read(self):
+        return self.read_at is not None
+
+    def mark_read(self):
+        if not self.read_at:
+            self.read_at = timezone.now()
+            self.save(update_fields=["read_at"])

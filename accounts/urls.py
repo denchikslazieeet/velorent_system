@@ -2,6 +2,8 @@ from django.urls import path
 from .views import (
     AccountClaimView,
     ProfileView,
+    MarkNotificationsReadView,
+    NotificationsListView,
     UserLoginView,
     UserLogoutView,
     UserRegisterView,
@@ -25,4 +27,6 @@ urlpatterns = [
     path('vk/test/', VKTestNotificationView.as_view(), name='vk-test-notification'),
     path('logout/', UserLogoutView.as_view(), name='logout'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('notifications/', NotificationsListView.as_view(), name='notifications'),
+    path('notifications/read/', MarkNotificationsReadView.as_view(), name='notifications-read'),
 ]

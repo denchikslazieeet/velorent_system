@@ -27,6 +27,13 @@
                     <a href="/admin/">Администратор</a>
                 {% endif %}
 
+                <a href="{% url 'notifications' %}" class="notification-nav-link">
+                    Уведомления
+                    {% if unread_notifications_count %}
+                        <span class="notification-badge">{{ unread_notifications_count }}</span>
+                    {% endif %}
+                </a>
+
                 <form method="post" action="/accounts/logout/" class="logout-form">
                     {% csrf_token %}
                     <button type="submit" class="nav-button">Выйти</button>

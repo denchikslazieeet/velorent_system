@@ -97,6 +97,27 @@ a {
     border: 1px solid var(--border);
 }
 
+.notification-nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.notification-badge {
+    min-width: 22px;
+    height: 22px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: #f87171;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .logout-form {
     display: inline;
     margin: 0;
@@ -301,6 +322,57 @@ a {
     margin-top: 4px;
     color: var(--muted);
     font-size: 13px;
+}
+
+.email-reminder-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-color: rgba(121, 226, 183, 0.28);
+    background: linear-gradient(135deg, rgba(121, 226, 183, 0.12), rgba(93, 168, 255, 0.08));
+}
+
+.email-reminder-card h3 {
+    margin-top: 0;
+}
+
+.email-reminder-card p {
+    margin-bottom: 0;
+}
+
+.notification-list {
+    display: grid;
+    gap: 14px;
+}
+
+.notification-card {
+    display: grid;
+    gap: 12px;
+}
+
+.notification-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.notification-card-head h3 {
+    margin: 0 0 6px;
+}
+
+.notification-card-head small {
+    color: var(--muted);
+}
+
+.notification-card p {
+    margin: 0;
+}
+
+.notification-unread {
+    border-color: rgba(93, 168, 255, 0.45);
+    box-shadow: 0 0 0 1px rgba(93, 168, 255, 0.08) inset;
 }
 
 .price-block {
@@ -792,6 +864,12 @@ input[type="radio"] {
 
     .price-block {
         align-items: stretch;
+    }
+
+    .email-reminder-card,
+    .notification-card-head {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .nav {
