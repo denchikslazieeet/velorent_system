@@ -5,7 +5,6 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.core.mail import send_mail
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -288,38 +287,6 @@ class VKTestNotificationView(LoginRequiredMixin, View):
                 request,
                 "Не удалось отправить сообщение. Проверьте VK_GROUP_TOKEN и разрешение сообщений от сообщества."
             )
-        return redirect('profile')
-
-
-class EmailTestNotificationView(LoginRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        user = request.user
-        if not user.email:
-            messages.warning(request, "Сначала укажите email в профиле.")
-            return redirect('profile')
-
-        try:
-            sent_count = send_mail(
-                subject="ВелоРент: тестовое уведомление",
-                message=(
-                    "Это тестовое письмо от ВелоРент. "
-                    "Если вы его получили, email-уведомления работают."
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
-        except Exception:
-            messages.error(
-                request,
-                "Не удалось отправить тестовое письмо. Проверьте SMTP-настройки в .env."
-            )
-            return redirect('profile')
-
-        if sent_count:
-            messages.success(request, f"Тестовое письмо отправлено на {user.email}.")
-        else:
-            messages.warning(request, "Почтовый сервер не принял тестовое письмо.")
         return redirect('profile')
 
 

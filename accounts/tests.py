@@ -137,11 +137,29 @@ class UserNotificationTests(TestCase):
         result = notify_booking_event(self.booking, "confirmed")
 
         self.assertIsInstance(result["site_notification"], UserNotification)
+        self.assertEqual(result["operator_notifications"], [])
         self.assertTrue(result["email_sent"])
         self.assertFalse(result["vk_sent"])
         self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 1)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Бронь VR-1001 подтверждена", mail.outbox[0].subject)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        VK_GROUP_TOKEN="",
+    )
+    def test_booking_created_notifies_operators(self):
+        operator = User.objects.create_user(
+            username="operator",
+            role=User.Role.OPERATOR,
+        )
+
+        result = notify_booking_event(self.booking, "created")
+
+        self.assertEqual(len(result["operator_notifications"]), 1)
+        self.assertEqual(result["operator_notifications"][0].user, operator)
+        self.assertIn("Новая бронь VR-1001", result["operator_notifications"][0].title)
+        self.assertIn("Городской Бриз", result["operator_notifications"][0].message)
 
     def test_notifications_page_marks_items_read(self):
         UserNotification.objects.create(

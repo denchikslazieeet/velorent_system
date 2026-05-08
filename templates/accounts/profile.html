@@ -86,10 +86,6 @@
                 <h3>Email-уведомления</h3>
                 <p class="muted">Важные события по броням будут приходить на {{ request.user.email }}.</p>
             </div>
-            <form method="post" action="{% url 'email-test-notification' %}" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-secondary btn-sm">Отправить тест</button>
-            </form>
         </div>
     </section>
 {% endif %}

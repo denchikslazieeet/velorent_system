@@ -9,7 +9,7 @@ from django.core.mail import send_mail
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import UserNotification
+from accounts.models import User, UserNotification
 
 
 logger = logging.getLogger(__name__)
@@ -118,6 +118,35 @@ def create_site_notification(booking, event, title, message):
     )
 
 
+def create_operator_booking_notifications(booking):
+    operators = User.objects.filter(role__in=[User.Role.OPERATOR, User.Role.ADMIN])
+    staff_users = User.objects.filter(is_staff=True)
+    recipients = (operators | staff_users).distinct()
+
+    title = f"Новая бронь {booking.number}"
+    message = (
+        f"Создана новая бронь.\n"
+        f"Клиент: {booking.customer.full_name_or_phone}\n"
+        f"Телефон: {booking.customer.phone or '-'}\n"
+        f"Велосипед: {booking.bike.title}\n"
+        f"Период: {format_booking_period(booking)}\n"
+        f"Точка выдачи: {booking.pickup_location.name}\n"
+        f"Стоимость: {booking.quoted_price} ₽"
+    )
+    url = booking_url(booking)
+
+    return [
+        UserNotification.objects.create(
+            user=user,
+            title=title,
+            message=message,
+            url=url,
+            level=UserNotification.Level.INFO,
+        )
+        for user in recipients
+    ]
+
+
 def send_booking_email(booking, title, message):
     if not booking.customer.email:
         return False
@@ -146,10 +175,14 @@ def notify_booking_event(booking, event):
     title = build_booking_title(booking, event)
     message = build_booking_message(booking, event)
     site_notification = create_site_notification(booking, event, title, message)
+    operator_notifications = []
+    if event == "created":
+        operator_notifications = create_operator_booking_notifications(booking)
     email_sent = send_booking_email(booking, title, message)
     vk_sent = send_vk_message(booking.customer, message)
     return {
         "site_notification": site_notification,
+        "operator_notifications": operator_notifications,
         "email_sent": email_sent,
         "vk_sent": vk_sent,
     }
