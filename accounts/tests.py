@@ -153,7 +153,7 @@ class UserNotificationTests(TestCase):
 
         response = self.client.get(reverse("notifications"))
         self.assertContains(response, "Тест")
-        self.assertContains(response, "notification-badge")
+        self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 0)
 
         response = self.client.post(reverse("notifications-read"))
         self.assertRedirects(response, reverse("notifications"))

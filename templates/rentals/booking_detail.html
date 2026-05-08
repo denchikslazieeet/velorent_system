@@ -137,27 +137,27 @@
     <details class="card operator-collapse" {% if not booking.customer.document_verified %}open{% endif %}>
         <summary>Документ клиента</summary>
         <div class="detail-grid">
-            {% if booking.customer.document_verified %}
-                <div class="list-row">
-                    <span>Статус</span>
-                    <strong>Документ проверен</strong>
-                </div>
-                <div class="list-row">
-                    <span>Тип документа</span>
-                    <strong>{{ booking.customer.get_document_type_display }}</strong>
-                </div>
-                <div class="list-row">
-                    <span>Последние 4 цифры</span>
-                    <strong>{{ booking.customer.document_last4 }}</strong>
-                </div>
-                <div class="list-row">
-                    <span>Проверил</span>
-                    <strong>{{ booking.customer.document_verified_by.staff_display|default:"-" }}</strong>
-                </div>
-            {% else %}
-                <p class="muted">Клиент еще не верифицирован. Перед первой выдачей нужно проверить документ.</p>
+            {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
+                {% if booking.customer.document_verified %}
+                    <div class="list-row">
+                        <span>Статус</span>
+                        <strong>Документ проверен</strong>
+                    </div>
+                    <div class="list-row">
+                        <span>Тип документа</span>
+                        <strong>{{ booking.customer.get_document_type_display }}</strong>
+                    </div>
+                    <div class="list-row">
+                        <span>Последние 4 цифры</span>
+                        <strong>{{ booking.customer.document_last4 }}</strong>
+                    </div>
+                    <div class="list-row">
+                        <span>Проверил</span>
+                        <strong>{{ booking.customer.document_verified_by.staff_display|default:"-" }}</strong>
+                    </div>
+                {% else %}
+                    <p class="muted">Клиент еще не верифицирован. Перед первой выдачей нужно проверить документ.</p>
 
-                {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
                     <form method="post" action="{% url 'verify-customer' booking.pk %}" class="compact-form">
                         {% csrf_token %}
                         <input type="text" name="first_name" value="{{ booking.customer.first_name }}" placeholder="Имя" required>
@@ -171,6 +171,12 @@
                         <input type="text" name="document_last4" maxlength="4" inputmode="numeric" placeholder="4 цифры" required>
                         <button type="submit" class="btn btn-primary btn-sm">Подтвердить</button>
                     </form>
+                {% endif %}
+            {% else %}
+                {% if booking.customer.document_verified %}
+                    <p class="muted">Вы верифицированы. При получении велосипеда оператор может попросить документ для контрольной сверки.</p>
+                {% else %}
+                    <p class="muted">Вы еще не верифицированы. Верификация пройдет на месте с оператором перед первой выдачей велосипеда.</p>
                 {% endif %}
             {% endif %}
         </div>

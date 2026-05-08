@@ -8,12 +8,7 @@
             <h1>Уведомления</h1>
             <p>Здесь сохраняются важные события по вашим броням и арендам.</p>
         </div>
-        {% if unread_total %}
-            <form method="post" action="{% url 'notifications-read' %}" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-secondary btn-sm">Прочитать все</button>
-            </form>
-        {% endif %}
+        <a href="{{ back_url }}" class="btn btn-secondary btn-sm">Назад</a>
     </div>
 </div>
 

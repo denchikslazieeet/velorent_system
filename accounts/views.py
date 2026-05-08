@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
+from django.core.mail import send_mail
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -290,6 +291,38 @@ class VKTestNotificationView(LoginRequiredMixin, View):
         return redirect('profile')
 
 
+class EmailTestNotificationView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user.email:
+            messages.warning(request, "Сначала укажите email в профиле.")
+            return redirect('profile')
+
+        try:
+            sent_count = send_mail(
+                subject="ВелоРент: тестовое уведомление",
+                message=(
+                    "Это тестовое письмо от ВелоРент. "
+                    "Если вы его получили, email-уведомления работают."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            messages.error(
+                request,
+                "Не удалось отправить тестовое письмо. Проверьте SMTP-настройки в .env."
+            )
+            return redirect('profile')
+
+        if sent_count:
+            messages.success(request, f"Тестовое письмо отправлено на {user.email}.")
+        else:
+            messages.warning(request, "Почтовый сервер не принял тестовое письмо.")
+        return redirect('profile')
+
+
 class UserLogoutView(LogoutView):
     next_page = reverse_lazy('home')
 
@@ -318,12 +351,20 @@ class NotificationsListView(LoginRequiredMixin, ListView):
     context_object_name = 'notifications'
     paginate_by = 12
 
+    def get(self, request, *args, **kwargs):
+        UserNotification.objects.filter(
+            user=request.user,
+            read_at__isnull=True,
+        ).update(read_at=timezone.now())
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         return self.request.user.notifications.all()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['unread_total'] = self.request.user.notifications.filter(read_at__isnull=True).count()
+        context['back_url'] = reverse(get_role_home(self.request.user))
         if context.get('is_paginated'):
             paginator = context['paginator']
             page_number = context['page_obj'].number

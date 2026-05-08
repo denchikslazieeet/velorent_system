@@ -79,6 +79,21 @@
     <button class="btn btn-primary" type="submit">Сохранить изменения</button>
 </form>
 
+{% if request.user.email %}
+    <section class="card compact-card" style="margin-top: 20px;">
+        <div class="section-head">
+            <div>
+                <h3>Email-уведомления</h3>
+                <p class="muted">Важные события по броням будут приходить на {{ request.user.email }}.</p>
+            </div>
+            <form method="post" action="{% url 'email-test-notification' %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary btn-sm">Отправить тест</button>
+            </form>
+        </div>
+    </section>
+{% endif %}
+
 <section class="card vk-profile-card" style="margin-top: 20px;">
     <div class="section-head">
         <div>
