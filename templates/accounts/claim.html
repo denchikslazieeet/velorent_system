@@ -58,7 +58,7 @@
     <div class="checkbox-group">
         <label class="checkbox-label">
             {{ form.accept_terms }}
-            <span>Я принимаю условия аренды</span>
+            <span>Я принимаю <a href="{% url 'terms' %}" target="_blank" rel="noopener" class="text-link">условия аренды</a></span>
         </label>
         {% for error in form.accept_terms.errors %}
             <div class="field-error">{{ error }}</div>

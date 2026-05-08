@@ -79,7 +79,13 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7">Клиенты не найдены.</td>
+                <td colspan="7">
+                    <div class="empty-state empty-state-table">
+                        <strong>Клиенты не найдены</strong>
+                        <p>Проверьте поиск или создайте бронь по телефону, чтобы клиент появился в списке.</p>
+                        <a href="/rentals/operator/new/" class="btn btn-primary btn-sm">Создать бронь</a>
+                    </div>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

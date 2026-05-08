@@ -40,9 +40,10 @@
             {% endif %}
         </article>
     {% empty %}
-        <section class="card compact-card">
-            <h3>Пока уведомлений нет</h3>
+        <section class="card empty-state">
+            <strong>Пока уведомлений нет</strong>
             <p class="muted">Когда появятся события по броням, они будут собираться здесь.</p>
+            <a href="{{ back_url }}" class="btn btn-secondary btn-sm">Назад</a>
         </section>
     {% endfor %}
 </section>

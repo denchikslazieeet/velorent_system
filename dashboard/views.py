@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum, Q, Count
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import TemplateView, ListView, DetailView
 
@@ -15,6 +16,10 @@ User = get_user_model()
 
 class HomePageView(TemplateView):
     template_name = 'home.html'
+
+
+class TermsView(TemplateView):
+    template_name = 'terms.html'
 
 
 class UserDashboardView(LoginRequiredMixin, TemplateView):
@@ -53,6 +58,12 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         context['available_bikes'] = Bike.objects.filter(status=Bike.Status.AVAILABLE).count()
         context['active_rentals'] = Rental.objects.filter(status=Rental.Status.ACTIVE).count()
         context['pending_bookings'] = Booking.objects.filter(status=Booking.Status.PENDING).count()
+        context['upcoming_today'] = Booking.objects.filter(
+            status=Booking.Status.CONFIRMED,
+            start_at__gte=today_start,
+            start_at__lt=today_start + timedelta(days=1),
+        ).count()
+        context['service_bikes'] = Bike.objects.filter(status=Bike.Status.SERVICE).count()
 
         revenue = (
             Payment.objects
@@ -127,6 +138,36 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         )
 
         context['customers_total'] = User.objects.filter(role=User.Role.CUSTOMER).count()
+        context['today_important'] = [
+            {
+                'label': 'Подтвердить брони',
+                'value': context['pending_bookings'],
+                'note': 'Новые заявки ждут решения оператора.',
+                'url': f"{reverse('operator-dashboard')}?status={Booking.Status.PENDING}",
+                'tone': 'warning',
+            },
+            {
+                'label': 'Выдачи сегодня',
+                'value': context['upcoming_today'],
+                'note': 'Подтвержденные брони с началом сегодня.',
+                'url': f"{reverse('operator-dashboard')}?status={Booking.Status.CONFIRMED}",
+                'tone': 'info',
+            },
+            {
+                'label': 'Велосипеды на обслуживании',
+                'value': context['service_bikes'],
+                'note': 'Проверьте парк перед выдачами.',
+                'url': f"{reverse('operator-bikes')}?status={Bike.Status.SERVICE}",
+                'tone': 'danger',
+            },
+            {
+                'label': 'Активные аренды',
+                'value': context['active_rentals'],
+                'note': 'Следите за плановыми возвратами.',
+                'url': f"{reverse('operator-dashboard')}?status={Booking.Status.ACTIVE}",
+                'tone': 'info',
+            },
+        ]
 
         return context
 

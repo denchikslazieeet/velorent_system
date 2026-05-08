@@ -20,7 +20,11 @@
             <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary">Открыть</a>
         </article>
     {% empty %}
-        <div class="card">У вас пока нет заказов.</div>
+        <section class="card empty-state">
+            <strong>У вас пока нет заказов</strong>
+            <p>Забронируйте велосипед в каталоге, а затем отслеживайте статус здесь.</p>
+            <a href="/catalog/" class="btn btn-primary btn-sm">Открыть каталог</a>
+        </section>
     {% endfor %}
 </div>
 {% endblock %}

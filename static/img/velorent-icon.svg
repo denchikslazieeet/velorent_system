@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VeloRent">
+  <rect width="64" height="64" rx="16" fill="#0b1220"/>
+  <path d="M18 43a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm28 0a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" fill="none" stroke="#79e2b7" stroke-width="4"/>
+  <path d="M18 34h10l7-14h6m-13 14 10 0 8 0m-18 0-5-12h-5" fill="none" stroke="#5da8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 20h8" stroke="#eef4ff" stroke-width="4" stroke-linecap="round"/>
+</svg>

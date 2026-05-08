@@ -42,6 +42,26 @@
     </div>
 </section>
 
+<section class="card compact-card priority-card" style="margin-bottom: 20px;">
+    <div class="section-head">
+        <div>
+            <h3>Сегодня важно</h3>
+            <p class="muted">Короткий список того, что требует внимания.</p>
+        </div>
+        <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
+    </div>
+
+    <div class="priority-grid">
+        {% for item in today_important %}
+            <a href="{{ item.url }}" class="priority-item priority-{{ item.tone }}">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <small>{{ item.note }}</small>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+
 <section class="grid grid-2" style="margin-bottom: 20px;">
     <section class="card compact-card">
         <div class="section-head">
@@ -81,7 +101,10 @@
                 <strong>{{ bike.total }}</strong>
             </div>
         {% empty %}
-            <p>Пока недостаточно данных.</p>
+            <div class="empty-state empty-state-compact">
+                <strong>Данных пока мало</strong>
+                <p>Когда появятся брони, здесь будет рейтинг велосипедов.</p>
+            </div>
         {% endfor %}
     </section>
 </section>
@@ -182,7 +205,13 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7">По вашему запросу ничего не найдено.</td>
+                    <td colspan="7">
+                        <div class="empty-state empty-state-table">
+                            <strong>Брони не найдены</strong>
+                            <p>Попробуйте изменить фильтр или создайте новую бронь для клиента.</p>
+                            <a href="/rentals/operator/new/" class="btn btn-primary btn-sm">Создать бронь</a>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

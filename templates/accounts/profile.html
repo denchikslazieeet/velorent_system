@@ -3,181 +3,182 @@
 
 {% block content %}
 <div class="page-header compact-header">
-    <h1>Профиль</h1>
-    <p>Ваши данные и статус проверки документа.</p>
+    <div class="section-head">
+        <div>
+            <h1>Профиль</h1>
+            <p>Контакты, уведомления и статус верификации.</p>
+        </div>
+        <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
+    </div>
 </div>
 
 {% if not request.user.document_verified %}
 <section class="card warning-card" style="margin-bottom: 20px;">
-    <h3>Для первой аренды нужен документ</h3>
-    <p>
-        Перед первой выдачей велосипеда возьмите с собой документ, удостоверяющий личность,
-        или подготовьте его для предъявления оператору.
-    </p>
+    <h3>Вы еще не верифицированы</h3>
+    <p>Перед первой выдачей оператор проверит документ на месте. Возьмите с собой паспорт или другой документ, удостоверяющий личность.</p>
 </section>
 {% endif %}
 
 {% if not request.user.email %}
 <section class="card email-reminder-card" style="margin-bottom: 20px;">
     <div>
-        <h3>Email помогает не пропустить бронь</h3>
-        <p>Если указать email, важные уведомления будут приходить и на почту, и в раздел уведомлений на сайте.</p>
+        <h3>Email важен для уведомлений</h3>
+        <p>Укажите почту, чтобы получать подтверждения брони, выдачу, возврат и оплату не только на сайте.</p>
     </div>
 </section>
 {% endif %}
 
-<form method="post" class="card form-card auth-form">
-    {% csrf_token %}
+<section class="profile-layout">
+    <form method="post" class="card form-card profile-main-card">
+        {% csrf_token %}
 
-    {% if form.non_field_errors %}
-        <div class="form-errors">
-            {% for error in form.non_field_errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
-    <div class="form-grid grid-2">
-        <div class="form-field">
-            <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
-            {{ form.first_name }}
-            {% for error in form.first_name.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="form-field">
-            <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
-            {{ form.last_name }}
-            {% for error in form.last_name.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="form-field">
-            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-            {{ form.email }}
-            {% for error in form.email.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="form-field">
-            <label for="{{ form.telegram.id_for_label }}">{{ form.telegram.label }}</label>
-            {{ form.telegram }}
-            {% for error in form.telegram.errors %}
-                <div class="field-error">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <div class="form-field">
-            <label>{{ form.phone.label }}</label>
-            {{ form.phone }}
-        </div>
-    </div>
-
-    <button class="btn btn-primary" type="submit">Сохранить изменения</button>
-</form>
-
-{% if request.user.email %}
-    <section class="card compact-card" style="margin-top: 20px;">
         <div class="section-head">
             <div>
-                <h3>Email-уведомления</h3>
-                <p class="muted">Важные события по броням будут приходить на {{ request.user.email }}.</p>
+                <h3>Личные данные</h3>
+                <p class="muted">Эти данные помогут оператору быстрее найти вашу бронь.</p>
             </div>
         </div>
-    </section>
-{% endif %}
 
-<section class="card vk-profile-card" style="margin-top: 20px;">
-    <div class="section-head">
-        <div>
-            <h3>VK</h3>
-            <p class="muted">Привяжите VK, чтобы получать уведомления по броням и арендам.</p>
-        </div>
-        {% if request.user.vk_id %}
-            <span class="status-badge status-completed">Привязан</span>
-        {% else %}
-            <span class="status-badge status-pending">Не привязан</span>
-        {% endif %}
-    </div>
-
-    {% if request.user.vk_id %}
-        <div class="list-row">
-            <span>VK ID</span>
-            <strong>{{ request.user.vk_id }}</strong>
-        </div>
-        {% if request.user.vk_screen_name %}
-            <div class="list-row">
-                <span>Профиль</span>
-                <strong>{{ request.user.vk_screen_name }}</strong>
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
             </div>
         {% endif %}
 
-        <form method="post" action="{% url 'vk-notifications' %}" class="vk-settings-form">
-            {% csrf_token %}
-            <label class="checkbox-label">
-                <input type="checkbox" name="enabled" {% if request.user.vk_notifications_enabled %}checked{% endif %}>
-                <span>Получать уведомления VK</span>
-            </label>
-            <button type="submit" class="btn btn-secondary btn-sm">Сохранить</button>
-        </form>
+        <div class="form-grid grid-2">
+            <div class="form-field">
+                <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+                {% for error in form.first_name.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
 
-        <div class="action-group">
-            <form method="post" action="{% url 'vk-test-notification' %}" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-primary btn-sm">Отправить тест</button>
-            </form>
-            {% if vk_community_url %}
-                <a href="{{ vk_community_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
-                    Открыть сообщество VK
-                </a>
+            <div class="form-field">
+                <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+                {% for error in form.last_name.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% for error in form.email.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.telegram.id_for_label }}">{{ form.telegram.label }}</label>
+                {{ form.telegram }}
+                {% for error in form.telegram.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                <label>{{ form.phone.label }}</label>
+                {{ form.phone }}
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Сохранить изменения</button>
+    </form>
+
+    <aside class="profile-side">
+        <section class="card compact-card">
+            <div class="section-head">
+                <h3>Уведомления</h3>
+                {% if request.user.email %}
+                    <span class="status-badge status-completed">Email подключен</span>
+                {% else %}
+                    <span class="status-badge status-pending">Email не указан</span>
+                {% endif %}
+            </div>
+            {% if request.user.email %}
+                <p class="muted">Важные события по броням будут приходить на {{ request.user.email }} и в раздел уведомлений.</p>
+            {% else %}
+                <p class="muted">Пока уведомления сохраняются только на сайте. Добавьте email в форме слева.</p>
             {% endif %}
-        </div>
+        </section>
 
-        {% if not vk_group_token_present %}
-            <p class="muted">Токен сообщества VK еще не настроен, отправка уведомлений пока не активна.</p>
-        {% endif %}
+        <section class="card compact-card vk-profile-card">
+            <div class="section-head">
+                <h3>VK</h3>
+                {% if request.user.vk_id %}
+                    <span class="status-badge status-completed">Привязан</span>
+                {% else %}
+                    <span class="status-badge status-pending">Не привязан</span>
+                {% endif %}
+            </div>
 
-        <form method="post" action="{% url 'vk-unlink' %}" class="inline-form">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-secondary btn-sm">Отвязать VK</button>
-        </form>
-    {% else %}
-        <p class="muted">
-            После привязки мы сможем отправлять уведомления в VK, если вы разрешили сообщения от нашего сообщества.
-        </p>
-        <a href="{% url 'vk-link' %}" class="btn vk-auth-button">Привязать VK</a>
-    {% endif %}
-</section>
+            {% if request.user.vk_id %}
+                {% if request.user.vk_screen_name %}
+                    <div class="list-row">
+                        <span>Профиль</span>
+                        <strong>{{ request.user.vk_screen_name }}</strong>
+                    </div>
+                {% endif %}
 
-<section class="card" style="margin-top: 20px;">
-    <h3>Верификация личности</h3>
+                <form method="post" action="{% url 'vk-notifications' %}" class="vk-settings-form">
+                    {% csrf_token %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="enabled" {% if request.user.vk_notifications_enabled %}checked{% endif %}>
+                        <span>Получать уведомления VK</span>
+                    </label>
+                    <button type="submit" class="btn btn-secondary btn-sm">Сохранить</button>
+                </form>
 
-    {% if request.user.document_verified %}
-        <div class="list-row">
-            <span>Статус</span>
-            <strong>Документ проверен</strong>
-        </div>
-        <div class="list-row">
-            <span>Тип документа</span>
-            <strong>{{ request.user.get_document_type_display }}</strong>
-        </div>
-        <div class="list-row">
-            <span>Последние 4 цифры</span>
-            <strong>{{ request.user.document_last4 }}</strong>
-        </div>
-        <div class="list-row">
-            <span>Дата проверки</span>
-            <strong>{{ request.user.document_verified_at|date:"d.m.Y H:i" }}</strong>
-        </div>
-        <div class="list-row">
-            <span>Проверил</span>
-            <strong>{{ request.user.document_verified_by.staff_display|default:"—" }}</strong>
-        </div>
-    {% else %}
-        <p class="muted">Документ ещё не проверен оператором.</p>
-    {% endif %}
+                <div class="action-group">
+                    <form method="post" action="{% url 'vk-test-notification' %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">Отправить тест</button>
+                    </form>
+                    {% if vk_community_url %}
+                        <a href="{{ vk_community_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Открыть VK</a>
+                    {% endif %}
+                </div>
+
+                {% if not vk_group_token_present %}
+                    <p class="muted">Токен сообщества VK еще не настроен, отправка уведомлений пока не активна.</p>
+                {% endif %}
+
+                <form method="post" action="{% url 'vk-unlink' %}" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm">Отвязать VK</button>
+                </form>
+            {% else %}
+                <p class="muted">Привяжите VK, чтобы получать уведомления по броням и арендам после настройки сообщества.</p>
+                <a href="{% url 'vk-link' %}" class="btn vk-auth-button">Привязать VK</a>
+            {% endif %}
+        </section>
+
+        <section class="card compact-card">
+            <div class="section-head">
+                <h3>Верификация</h3>
+                {% if request.user.document_verified %}
+                    <span class="status-badge status-completed">Проверено</span>
+                {% else %}
+                    <span class="status-badge status-pending">На месте</span>
+                {% endif %}
+            </div>
+
+            {% if request.user.document_verified %}
+                <p class="muted">Документ проверен. При новых арендах оператор увидит нужные служебные данные в своей панели.</p>
+                {% if request.user.document_verified_at %}
+                    <div class="list-row">
+                        <span>Дата проверки</span>
+                        <strong>{{ request.user.document_verified_at|date:"d.m.Y H:i" }}</strong>
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="muted">Процесс верификации пройдет на месте с оператором перед первой выдачей велосипеда.</p>
+            {% endif %}
+        </section>
+    </aside>
 </section>
 {% endblock %}

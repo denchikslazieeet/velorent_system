@@ -33,7 +33,10 @@
             </div>
         </article>
     {% empty %}
-        <div class="card">Свободных велосипедов пока нет.</div>
+        <section class="card empty-state">
+            <strong>Свободных велосипедов пока нет</strong>
+            <p>Парк обновится после возврата или обслуживания велосипедов.</p>
+        </section>
     {% endfor %}
 </div>
 {% endblock %}

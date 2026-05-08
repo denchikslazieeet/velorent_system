@@ -50,7 +50,7 @@
     <div class="checkbox-group">
         <label class="checkbox-label">
             {{ form.accept_terms }}
-            <span>Я принимаю условия аренды</span>
+            <span>Я принимаю <a href="{% url 'terms' %}" target="_blank" rel="noopener" class="text-link">условия аренды</a></span>
         </label>
         {% for error in form.accept_terms.errors %}
             <div class="field-error">{{ error }}</div>
@@ -71,7 +71,7 @@
 
     <a href="{% url 'vk-login' %}" class="btn vk-auth-button">Зарегистрироваться через VK</a>
     <p class="muted auth-note">
-        Продолжая через VK, вы принимаете условия аренды и согласие на обработку персональных данных.
+        Продолжая через VK, вы принимаете <a href="{% url 'terms' %}" target="_blank" rel="noopener" class="text-link">условия аренды</a> и согласие на обработку персональных данных.
     </p>
 
     <p class="muted" style="margin-top: 14px;">

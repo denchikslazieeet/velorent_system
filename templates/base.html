@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ВелоРент{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 <header class="site-header">
     <div class="container nav">
-        <a href="/" class="brand">ВелоРент</a>
+        <a href="/" class="brand" aria-label="ВелоРент">
+            <span class="brand-mark">ВР</span>
+            <span>ВелоРент</span>
+        </a>
 
         <nav class="nav-links">
             {% if request.user.is_authenticated %}
@@ -39,6 +43,8 @@
                     <button type="submit" class="nav-button">Выйти</button>
                 </form>
             {% else %}
+                <a href="/catalog/">Каталог</a>
+                <a href="{% url 'terms' %}">Условия</a>
                 <a href="/accounts/login/">Войти</a>
                 <a href="/accounts/register/" class="nav-accent">Регистрация</a>
             {% endif %}
@@ -58,8 +64,9 @@
 </main>
 
 <footer class="site-footer">
-    <div class="container">
+    <div class="container footer-content">
         <p>ВелоРент</p>
+        <a href="{% url 'terms' %}">Условия аренды</a>
     </div>
 </footer>
 </body>

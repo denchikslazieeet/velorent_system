@@ -110,7 +110,13 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="6">Велосипеды не найдены.</td>
+                    <td colspan="6">
+                        <div class="empty-state empty-state-table">
+                            <strong>Велосипеды не найдены</strong>
+                            <p>Измените фильтры или проверьте список велосипедов в админке.</p>
+                            <a href="/admin/catalog/bike/" class="btn btn-secondary btn-sm">Открыть админку</a>
+                        </div>
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

@@ -56,7 +56,11 @@
             </span>
         </div>
     {% empty %}
-        <p>Пока нет заказов.</p>
+        <div class="empty-state">
+            <strong>Заказов пока нет</strong>
+            <p>Выберите велосипед в каталоге, и последние брони появятся здесь.</p>
+            <a href="/catalog/" class="btn btn-primary btn-sm">Открыть каталог</a>
+        </div>
     {% endfor %}
 </section>
 {% endblock %}
