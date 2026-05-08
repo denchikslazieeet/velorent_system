@@ -867,7 +867,8 @@ input[type="radio"] {
     }
 
     .email-reminder-card,
-    .notification-card-head {
+    .notification-card-head,
+    .next-step-card {
         align-items: stretch;
         flex-direction: column;
     }
@@ -1082,6 +1083,38 @@ input[type="radio"] {
     padding: 20px;
 }
 
+.next-step-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+    border-color: rgba(93, 168, 255, 0.28);
+}
+
+.next-step-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.next-step-card h3 {
+    margin: 0 0 6px;
+}
+
+.next-step-card p {
+    margin: 0;
+}
+
+.next-step-success {
+    border-color: rgba(121, 226, 183, 0.28);
+}
+
+.next-step-warning {
+    border-color: rgba(251, 191, 36, 0.35);
+}
+
 .summary-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1149,6 +1182,73 @@ input[type="radio"] {
 
 .detail-table {
     margin-top: 18px;
+}
+
+.booking-timeline {
+    display: grid;
+    gap: 0;
+    margin-top: 12px;
+}
+
+.timeline-item {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+    position: relative;
+    padding: 0 0 18px;
+}
+
+.timeline-item::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 18px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-item:last-child::before {
+    display: none;
+}
+
+.timeline-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--panel-light);
+    margin-top: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+.timeline-done .timeline-dot {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+}
+
+.timeline-current .timeline-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 5px rgba(93, 168, 255, 0.14);
+}
+
+.timeline-stopped .timeline-dot {
+    background: #f87171;
+    border-color: #f87171;
+}
+
+.timeline-item p {
+    margin: 4px 0;
+}
+
+.timeline-item small {
+    color: var(--muted);
 }
 
 .compact-form {

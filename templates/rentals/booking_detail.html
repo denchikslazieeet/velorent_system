@@ -26,6 +26,15 @@
 </section>
 {% endif %}
 
+<section class="card next-step-card next-step-{{ next_step.level }}">
+    <div>
+        <span>Что дальше?</span>
+        <h3>{{ next_step.title }}</h3>
+        <p>{{ next_step.text }}</p>
+    </div>
+    <a href="{% url 'booking-receipt' booking.pk %}" class="btn btn-secondary btn-sm">Квитанция</a>
+</section>
+
 <section class="booking-workspace">
     <section class="card booking-summary">
         <div class="summary-grid">
@@ -134,6 +143,24 @@
 </section>
 
 <section class="detail-stack">
+    <details class="card operator-collapse" open>
+        <summary>История брони</summary>
+        <div class="booking-timeline">
+            {% for step in booking_timeline %}
+                <div class="timeline-item timeline-{{ step.state }}">
+                    <span class="timeline-dot"></span>
+                    <div>
+                        <strong>{{ step.title }}</strong>
+                        <p>{{ step.note }}</p>
+                        {% if step.time %}
+                            <small>{{ step.time|date:"d.m.Y H:i" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </details>
+
     <details class="card operator-collapse" {% if not booking.customer.document_verified %}open{% endif %}>
         <summary>Документ клиента</summary>
         <div class="detail-grid">

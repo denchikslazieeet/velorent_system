@@ -1,12 +1,13 @@
 from decimal import Decimal
 from datetime import timedelta
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import User
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
 from rentals.forms import BookingForm
-from rentals.models import Booking, make_booking_number
+from rentals.models import Booking, Rental, make_booking_number
 from rentals.services import bike_available_for_period, calculate_booking_quote
 
 class BookingServiceTests(TestCase):
@@ -71,3 +72,44 @@ class BookingServiceTests(TestCase):
         number = make_booking_number()
 
         self.assertRegex(number, r"^VR-\d{4}$")
+
+    def test_booking_detail_shows_next_step_and_timeline(self):
+        booking = Booking.objects.create(
+            number="VR-2001",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("booking-detail", kwargs={"pk": booking.pk}))
+
+        self.assertContains(response, "Что дальше?")
+        self.assertContains(response, "История брони")
+        self.assertContains(response, "Квитанция")
+
+    def test_booking_receipt_page_is_available_to_customer(self):
+        booking = Booking.objects.create(
+            number="VR-2002",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("booking-receipt", kwargs={"pk": booking.pk}))
+
+        self.assertContains(response, "Квитанция по аренде")
+        self.assertContains(response, "Печать")

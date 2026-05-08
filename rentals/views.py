@@ -35,6 +35,187 @@ def compute_late_fee(booking, actual_end_at):
     return original_fee(booking, actual_end_at)
 
 
+def is_operator_user(user):
+    return user.role in {'operator', 'admin'} or user.is_staff or user.is_superuser
+
+
+def booking_has_paid_rental(booking):
+    return booking.payments.filter(
+        kind=Payment.Kind.RENTAL,
+        status=Payment.Status.PAID,
+    ).exists()
+
+
+def booking_next_step(booking, user, pending_rental_payment=None):
+    is_operator = is_operator_user(user)
+
+    if booking.status == Booking.Status.CANCELLED:
+        return {
+            "title": "Бронь отменена",
+            "text": "Действий по этой брони больше не требуется.",
+            "level": "warning",
+        }
+
+    if booking.status == Booking.Status.EXPIRED:
+        return {
+            "title": "Клиент не пришел",
+            "text": "Бронь закрыта как неявка. Велосипед снова доступен для аренды.",
+            "level": "warning",
+        }
+
+    if is_operator:
+        if booking.status == Booking.Status.PENDING:
+            return {
+                "title": "Подтвердите бронь",
+                "text": "Проверьте данные клиента и подтвердите бронь, если велосипед можно выдать в выбранное время.",
+                "level": "info",
+            }
+        if booking.status == Booking.Status.CONFIRMED and not booking.customer.document_verified:
+            return {
+                "title": "Проверьте документ",
+                "text": "Перед выдачей нужно верифицировать клиента по документу.",
+                "level": "warning",
+            }
+        if booking.status == Booking.Status.CONFIRMED:
+            return {
+                "title": "Выдайте велосипед",
+                "text": "Документ проверен, бронь подтверждена. Можно оформить выдачу велосипеда.",
+                "level": "success",
+            }
+        if booking.status == Booking.Status.ACTIVE:
+            return {
+                "title": "Ожидается возврат",
+                "text": "После возврата укажите состояние велосипеда и завершите аренду.",
+                "level": "info",
+            }
+        if booking.status == Booking.Status.COMPLETED and pending_rental_payment:
+            return {
+                "title": "Подтвердите оплату",
+                "text": "Аренда завершена, осталось принять оплату и при необходимости вернуть залог.",
+                "level": "warning",
+            }
+        return {
+            "title": "Аренда закрыта",
+            "text": "Все основные действия по этой брони выполнены. Можно открыть или распечатать квитанцию.",
+            "level": "success",
+        }
+
+    if booking.status == Booking.Status.PENDING:
+        return {
+            "title": "Ожидайте подтверждения",
+            "text": "Оператор проверит бронь и подтвердит ее. Мы покажем обновление в уведомлениях.",
+            "level": "info",
+        }
+    if booking.status == Booking.Status.CONFIRMED:
+        return {
+            "title": "Приходите в пункт выдачи",
+            "text": "Возьмите документ с собой. Если вы еще не верифицированы, оператор проверит его на месте.",
+            "level": "success",
+        }
+    if booking.status == Booking.Status.ACTIVE:
+        return {
+            "title": "Аренда активна",
+            "text": "Верните велосипед в плановое время, чтобы избежать доплат за просрочку.",
+            "level": "info",
+        }
+    if booking.status == Booking.Status.COMPLETED and pending_rental_payment:
+        return {
+            "title": "Ожидается оплата",
+            "text": "Оператор подтвердит оплату, после этого бронь будет полностью закрыта.",
+            "level": "warning",
+        }
+    return {
+        "title": "Аренда завершена",
+        "text": "Спасибо за поездку. Квитанцию можно открыть на этой странице.",
+        "level": "success",
+    }
+
+
+def booking_timeline(booking):
+    has_rental = hasattr(booking, 'rental')
+    rental = booking.rental if has_rental else None
+    is_cancelled = booking.status == Booking.Status.CANCELLED
+    is_expired = booking.status == Booking.Status.EXPIRED
+    has_paid = booking_has_paid_rental(booking)
+    has_pending_payment = booking.payments.filter(
+        kind=Payment.Kind.RENTAL,
+        status=Payment.Status.PENDING,
+    ).exists()
+
+    confirmed_done = booking.status in {
+        Booking.Status.CONFIRMED,
+        Booking.Status.ACTIVE,
+        Booking.Status.COMPLETED,
+    }
+    issued_done = booking.status in {Booking.Status.ACTIVE, Booking.Status.COMPLETED}
+    returned_done = booking.status == Booking.Status.COMPLETED
+    payment_done = has_paid
+
+    steps = [
+        {
+            "title": "Бронь создана",
+            "state": "done",
+            "time": booking.created_at,
+            "note": "Заявка зафиксирована в системе.",
+        },
+        {
+            "title": "Подтверждение",
+            "state": "done" if confirmed_done else "stopped" if is_cancelled or is_expired else "current",
+            "time": booking.updated_at if confirmed_done else None,
+            "note": "Оператор подтверждает возможность выдачи.",
+        },
+        {
+            "title": "Выдача велосипеда",
+            "state": "done" if issued_done else "stopped" if is_cancelled or is_expired else "pending",
+            "time": rental.actual_start_at if rental else None,
+            "note": "Документ проверен, велосипед передан клиенту.",
+        },
+        {
+            "title": "Возврат",
+            "state": "done" if returned_done else "stopped" if is_cancelled or is_expired else "pending",
+            "time": rental.actual_end_at if rental else None,
+            "note": "Оператор принимает велосипед и фиксирует итог.",
+        },
+        {
+            "title": "Оплата",
+            "state": "done" if payment_done else "current" if has_pending_payment else "stopped" if is_cancelled or is_expired else "pending",
+            "time": None,
+            "note": "Оплата аренды и возврат залога.",
+        },
+    ]
+
+    if is_cancelled:
+        steps.append({
+            "title": "Бронь отменена",
+            "state": "stopped",
+            "time": booking.updated_at,
+            "note": "Бронь закрыта без выдачи велосипеда.",
+        })
+    elif is_expired:
+        steps.append({
+            "title": "Неявка",
+            "state": "stopped",
+            "time": booking.updated_at,
+            "note": "Клиент не пришел к началу аренды.",
+        })
+    return steps
+
+
+def receipt_totals(booking):
+    rental = booking.rental if hasattr(booking, 'rental') else None
+    rental_total = rental.final_price if rental and rental.final_price else booking.quoted_price
+    damage_fee = rental.damage_fee if rental else Decimal("0")
+    late_fee = rental.late_fee if rental else Decimal("0")
+    extra_time_fee = rental.extra_time_fee if rental else Decimal("0")
+    return {
+        "rental_total": rental_total,
+        "damage_fee": damage_fee,
+        "late_fee": late_fee,
+        "extra_time_fee": extra_time_fee,
+        "deposit_amount": booking.deposit_amount,
+    }
+
+
 class BookingCreateView(LoginRequiredMixin, CreateView):
     form_class = BookingForm
     template_name = 'rentals/booking_form.html'
@@ -165,7 +346,7 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             .prefetch_related('payments')
         )
         user = self.request.user
-        if user.role in {'operator', 'admin'} or user.is_staff or user.is_superuser:
+        if is_operator_user(user):
             return qs
         return qs.filter(customer=user)
 
@@ -185,6 +366,8 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             can_mark_no_show = timezone.now() >= no_show_allowed_at
 
         context['pending_rental_payment'] = pending_rental_payment
+        context['next_step'] = booking_next_step(booking, self.request.user, pending_rental_payment)
+        context['booking_timeline'] = booking_timeline(booking)
         context['document_type_choices'] = booking.customer.DocumentType.choices
         context['can_mark_no_show'] = can_mark_no_show
         context['no_show_allowed_at'] = no_show_allowed_at
@@ -223,6 +406,38 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             context['account_access_code_notice'] = access_code_notice
             del self.request.session['account_access_code_notice']
             self.request.session.modified = True
+        return context
+
+
+class BookingReceiptView(LoginRequiredMixin, DetailView):
+    model = Booking
+    template_name = 'rentals/booking_receipt.html'
+    context_object_name = 'booking'
+
+    def get_queryset(self):
+        qs = (
+            Booking.objects
+            .select_related(
+                'bike',
+                'pickup_location',
+                'customer',
+                'tariff',
+                'rental',
+                'rental__issued_by',
+                'rental__received_by',
+            )
+            .prefetch_related('payments')
+        )
+        user = self.request.user
+        if is_operator_user(user):
+            return qs
+        return qs.filter(customer=user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['receipt_totals'] = receipt_totals(self.object)
+        context['booking_timeline'] = booking_timeline(self.object)
+        context['printed_at'] = timezone.now()
         return context
 
 

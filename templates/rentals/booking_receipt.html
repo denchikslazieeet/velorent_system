@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Квитанция {{ booking.number }}</title>
+    <style>
+        :root {
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #d1d5db;
+            --soft: #f3f4f6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #e5e7eb;
+            color: var(--text);
+            font-family: Arial, sans-serif;
+            line-height: 1.45;
+        }
+
+        .receipt-shell {
+            width: min(920px, calc(100% - 32px));
+            margin: 28px auto;
+        }
+
+        .receipt-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .receipt-actions a,
+        .receipt-actions button {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            padding: 10px 14px;
+            font: inherit;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .receipt {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 34px;
+        }
+
+        .receipt-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 18px;
+            margin-bottom: 24px;
+        }
+
+        .receipt-head h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .receipt-head p,
+        .muted {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .receipt-number {
+            text-align: right;
+        }
+
+        .receipt-number strong {
+            display: block;
+            font-size: 22px;
+            margin-top: 6px;
+        }
+
+        .receipt-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .receipt-section {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .receipt-section h2 {
+            margin: 0 0 12px;
+            font-size: 17px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--soft);
+        }
+
+        .receipt-row:last-child {
+            border-bottom: 0;
+        }
+
+        .receipt-row span {
+            color: var(--muted);
+        }
+
+        .receipt-row strong {
+            text-align: right;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 8px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--soft);
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .total-row {
+            font-size: 18px;
+        }
+
+        .receipt-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 34px;
+        }
+
+        .sign-line {
+            border-top: 1px solid var(--text);
+            padding-top: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .receipt-shell {
+                width: 100%;
+                margin: 0;
+            }
+
+            .receipt-actions {
+                display: none;
+            }
+
+            .receipt {
+                border: 0;
+                border-radius: 0;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="receipt-shell">
+    <div class="receipt-actions">
+        <a href="{% url 'booking-detail' booking.pk %}">Назад к брони</a>
+        <button type="button" onclick="window.print()">Печать</button>
+    </div>
+
+    <article class="receipt">
+        <header class="receipt-head">
+            <div>
+                <h1>ВелоРент</h1>
+                <p>Квитанция по аренде велосипеда</p>
+            </div>
+            <div class="receipt-number">
+                <span>Бронь</span>
+                <strong>{{ booking.number }}</strong>
+                <p>{{ printed_at|date:"d.m.Y H:i" }}</p>
+            </div>
+        </header>
+
+        <section class="receipt-grid">
+            <div class="receipt-section">
+                <h2>Клиент</h2>
+                <div class="receipt-row">
+                    <span>ФИО</span>
+                    <strong>{{ booking.customer.full_name_or_phone }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Телефон</span>
+                    <strong>{{ booking.customer.phone|default:"-" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Email</span>
+                    <strong>{{ booking.customer.email|default:"-" }}</strong>
+                </div>
+            </div>
+
+            <div class="receipt-section">
+                <h2>Велосипед</h2>
+                <div class="receipt-row">
+                    <span>Модель</span>
+                    <strong>{{ booking.bike.title }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Серийный номер</span>
+                    <strong>{{ booking.bike.serial_number }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Точка выдачи</span>
+                    <strong>{{ booking.pickup_location.name }}</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="receipt-grid">
+            <div class="receipt-section">
+                <h2>Период</h2>
+                <div class="receipt-row">
+                    <span>Начало</span>
+                    <strong>{{ booking.start_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Плановый возврат</span>
+                    <strong>{{ booking.end_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Фактическая выдача</span>
+                    <strong>{{ booking.rental.actual_start_at|date:"d.m.Y H:i"|default:"-" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Фактический возврат</span>
+                    <strong>{{ booking.rental.actual_end_at|date:"d.m.Y H:i"|default:"-" }}</strong>
+                </div>
+            </div>
+
+            <div class="receipt-section">
+                <h2>Ответственные</h2>
+                <div class="receipt-row">
+                    <span>Выдал</span>
+                    <strong>{{ booking.rental.issued_by.staff_display|default:"-" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Принял</span>
+                    <strong>{{ booking.rental.received_by.staff_display|default:"-" }}</strong>
+                </div>
+                <div class="receipt-row">
+                    <span>Статус</span>
+                    <strong>{{ booking.get_status_display }}</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="receipt-section">
+            <h2>Расчет</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Позиция</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Аренда по тарифу "{{ booking.tariff.name }}"</td>
+                        <td>{{ booking.quoted_price }} ₽</td>
+                    </tr>
+                    <tr>
+                        <td>Штраф за повреждение</td>
+                        <td>{{ receipt_totals.damage_fee }} ₽</td>
+                    </tr>
+                    <tr>
+                        <td>Штраф за просрочку</td>
+                        <td>{{ receipt_totals.late_fee }} ₽</td>
+                    </tr>
+                    <tr>
+                        <td>Доплата за дополнительное время</td>
+                        <td>{{ receipt_totals.extra_time_fee }} ₽</td>
+                    </tr>
+                    <tr>
+                        <td>Залог</td>
+                        <td>{{ receipt_totals.deposit_amount }} ₽</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td><strong>Итого к оплате за аренду</strong></td>
+                        <td><strong>{{ receipt_totals.rental_total }} ₽</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="receipt-section" style="margin-top: 22px;">
+            <h2>Платежи</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Метод</th>
+                        <th>Статус</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in booking.payments.all %}
+                        <tr>
+                            <td>{{ payment.created_at|date:"d.m.Y H:i" }}</td>
+                            <td>{{ payment.get_kind_display }}</td>
+                            <td>{{ payment.get_method_display }}</td>
+                            <td>{{ payment.get_status_display }}</td>
+                            <td>{{ payment.amount }} ₽</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5">Платежи еще не зафиксированы.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <footer class="receipt-footer">
+            <div class="sign-line">Подпись клиента</div>
+            <div class="sign-line">Подпись оператора</div>
+        </footer>
+    </article>
+</main>
+</body>
+</html>
