@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Личный кабинет</h1>
+    <p>Ваши заказы и текущая информация.</p>
+</div>
+
+{% if request.user.next_booking_hourly_surcharge > 0 %}
+<section class="card warning-card" style="margin-bottom: 20px;">
+    <h3>Важно</h3>
+    <p>
+        К вашему следующему бронированию будет применена надбавка
+        <strong>{{ request.user.next_booking_hourly_surcharge }} ₽/час</strong>
+        из-за неявки на предыдущее бронирование.
+    </p>
+    {% if request.user.next_booking_penalty_reason %}
+        <p class="muted">{{ request.user.next_booking_penalty_reason }}</p>
+    {% endif %}
+</section>
+{% endif %}
+
+<section class="stats-grid stats-grid-single">
+    <div class="stat-card">
+        <span>Заказы</span>
+        <strong>{{ bookings|length }}</strong>
+    </div>
+</section>
+
+<section class="card compact-card">
+    <div class="section-head">
+        <h3>Мои заказы</h3>
+        <a class="btn btn-secondary btn-sm" href="/rentals/book/">Все</a>
+    </div>
+
+    {% for booking in bookings %}
+        <div class="list-row compact-row">
+            <div class="row-main">
+                <strong>{{ booking.number }}</strong>
+                <small>{{ booking.bike.title }}</small>
+                <small>{{ booking.start_at|date:"d.m.Y H:i" }}</small>
+            </div>
+            <span class="status-badge status-{{ booking.status }}">
+                {{ booking.get_status_display }}
+            </span>
+        </div>
+    {% empty %}
+        <p>Пока нет заказов.</p>
+    {% endfor %}
+</section>
+{% endblock %}

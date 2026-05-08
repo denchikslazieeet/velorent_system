@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Django/local runtime
+.env
+db.sqlite3
+staticfiles/
+*.log
+
+# Local tunnel binaries/tools
+cloudflared.exe
+ngrok.exe
+
+# User uploads, keep curated demo bike images
+media/*
+!media/bikes/
+!media/bikes/*.svg
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Каталог велосипедов{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Каталог велосипедов</h1>
+    <p>Доступные модели для онлайн-бронирования.</p>
+</div>
+
+<div class="card-list">
+    {% for bike in bikes %}
+        <article class="card bike-card">
+            <a href="/catalog/{{ bike.slug }}/" class="bike-card-media" aria-label="{{ bike.title }}">
+                {% if bike.photo %}
+                    <img src="{{ bike.photo.url }}" alt="{{ bike.title }}">
+                {% else %}
+                    <div class="bike-photo-placeholder">{{ bike.category.name }}</div>
+                {% endif %}
+            </a>
+            <div>
+                <h3>{{ bike.title }}</h3>
+                <span class="status-badge status-{{ bike.status }}">
+                    {{ bike.get_status_display }}
+                </span>
+                <p>{{ bike.description|default:"Надежный велосипед для города и активного отдыха." }}</p>
+                <div class="muted">
+                    <span>Категория: {{ bike.category.name }}</span>
+                    <span>Точка: {{ bike.current_location.name }}</span>
+                </div>
+            </div>
+            <div class="price-block">
+                <strong>{{ bike.tariff.hourly_rate }} ₽/час</strong>
+                <a class="btn btn-primary" href="/catalog/{{ bike.slug }}/">Подробнее</a>
+            </div>
+        </article>
+    {% empty %}
+        <div class="card">Свободных велосипедов пока нет.</div>
+    {% endfor %}
+</div>
+{% endblock %}

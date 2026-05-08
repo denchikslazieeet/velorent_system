@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Парк велосипедов{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <div>
+            <h1>Парк велосипедов</h1>
+            <p>Рабочий список для оператора: статусы, серийные номера и быстрые действия.</p>
+        </div>
+        <a href="{% url 'operator-dashboard' %}" class="btn btn-secondary btn-sm">К панели</a>
+    </div>
+</div>
+
+<section class="stats-grid stats-grid-compact">
+    <div class="stat-card">
+        <span>Доступны</span>
+        <strong>{{ available_total }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>В аренде</span>
+        <strong>{{ in_rent_total }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>На обслуживании</span>
+        <strong>{{ service_total }}</strong>
+    </div>
+</section>
+
+<section class="card operator-filter-card" style="margin-bottom: 20px;">
+    <form method="get" class="filter-form">
+        <input
+            type="text"
+            name="q"
+            value="{{ current_query }}"
+            placeholder="Название, категория или серийный номер"
+            class="table-input filter-input"
+        >
+
+        <select name="status" class="table-input filter-select">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+
+        {% if current_query or current_status %}
+            <a href="{% url 'operator-bikes' %}" class="btn btn-secondary btn-sm">Сбросить</a>
+        {% endif %}
+    </form>
+</section>
+
+<section class="card">
+    <table class="table operator-bikes-table">
+        <thead>
+            <tr>
+                <th>Велосипед</th>
+                <th>Категория</th>
+                <th>Тариф</th>
+                <th>Серийный номер</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bike in bikes %}
+                <tr>
+                    <td>
+                        <div class="bike-table-title">
+                            {% if bike.photo %}
+                                <img src="{{ bike.photo.url }}" alt="{{ bike.title }}">
+                            {% endif %}
+                            <div>
+                                <strong>{{ bike.title }}</strong>
+                                <span>{{ bike.color|default:"Цвет не указан" }} · {{ bike.frame_size|default:"рама не указана" }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ bike.category.name }}</td>
+                    <td>{{ bike.tariff.hourly_rate }} ₽/час</td>
+                    <td>{{ bike.serial_number }}</td>
+                    <td>
+                        <span class="status-badge status-{{ bike.status }}">
+                            {{ bike.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-group">
+                            <a href="{% url 'bike-detail' bike.slug %}" class="btn btn-secondary btn-sm">Открыть</a>
+
+                            {% if bike.status == 'available' %}
+                                <form method="post" action="{% url 'bike-service' bike.pk %}" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-secondary btn-sm">В обслуживание</button>
+                                </form>
+                            {% endif %}
+
+                            {% if bike.status == 'service' %}
+                                <form method="post" action="{% url 'bike-return-from-service' bike.pk %}" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary btn-sm">Вернуть</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6">Велосипеды не найдены.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% if is_paginated %}
+    <nav class="pagination">
+        {% for number in page_range %}
+            {% if number == page_obj.number %}
+                <span class="page-current">{{ number }}</span>
+            {% elif number == paginator.ELLIPSIS %}
+                <span class="page-gap">{{ number }}</span>
+            {% else %}
+                <a href="?page={{ number }}{% if current_query %}&q={{ current_query|urlencode }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}">
+                    {{ number }}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+{% endif %}
+{% endblock %}

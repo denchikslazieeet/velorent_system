@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block content %}
+<div class="page-header compact-header">
+    <h1>{{ page_title }}</h1>
+    <p>Создайте бронь за клиента, который обратился по телефону.</p>
+</div>
+
+<form method="post" class="card form-card clean-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {% for error in form.non_field_errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <section class="form-section">
+        <h3>Клиент</h3>
+        <div class="form-grid grid-2">
+            <div class="form-field">
+                <label for="{{ form.customer_full_name.id_for_label }}">{{ form.customer_full_name.label }}</label>
+                {{ form.customer_full_name }}
+                {% for error in form.customer_full_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.customer_phone.id_for_label }}">{{ form.customer_phone.label }}</label>
+                {{ form.customer_phone }}
+                {% for error in form.customer_phone.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <h3>Аренда</h3>
+        <div class="form-grid grid-2">
+            <div class="form-field">
+                <label for="{{ form.bike.id_for_label }}">{{ form.bike.label }}</label>
+                {{ form.bike }}
+                {% for error in form.bike.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.pickup_location.id_for_label }}">{{ form.pickup_location.label }}</label>
+                {{ form.pickup_location }}
+                {% for error in form.pickup_location.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.start_at.id_for_label }}">{{ form.start_at.label }}</label>
+                {{ form.start_at }}
+                {% for error in form.start_at.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.duration_hours.id_for_label }}">{{ form.duration_hours.label }}</label>
+                {{ form.duration_hours }}
+                {% for error in form.duration_hours.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="form-section">
+        <h3>Комментарий</h3>
+        <div class="form-field">
+            {{ form.comment }}
+            {% for error in form.comment.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
+    </section>
+
+    <button class="btn btn-primary" type="submit">Создать бронь</button>
+</form>
+{% endblock %}

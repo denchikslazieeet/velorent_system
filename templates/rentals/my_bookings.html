@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Мои заказы{% endblock %}
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Мои заказы</h1>
+</div>
+
+<div class="card-list">
+    {% for booking in bookings %}
+        <article class="card">
+            <h3>{{ booking.number }}</h3>
+            <p>{{ booking.bike.title }}</p>
+            <p>{{ booking.start_at|date:"d.m.Y H:i" }} — {{ booking.end_at|date:"d.m.Y H:i" }}</p>
+            <p>
+                Статус:
+                <span class="status-badge status-{{ booking.status }}">
+                    {{ booking.get_status_display }}
+                </span>
+            </p>
+            <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary">Открыть</a>
+        </article>
+    {% empty %}
+        <div class="card">У вас пока нет заказов.</div>
+    {% endfor %}
+</div>
+{% endblock %}

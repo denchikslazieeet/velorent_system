@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <h1>{{ page_title }}</h1>
+        <a href="{% url 'operator-analytics' %}?period={{ selected_period }}" class="btn btn-secondary btn-sm">Назад к аналитике</a>
+    </div>
+</div>
+
+<section class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Номер</th>
+                <th>Клиент</th>
+                <th>Телефон</th>
+                <th>Велосипед</th>
+                <th>Статус</th>
+                <th>Начало</th>
+                <th>Открыть</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking.number }}</td>
+                <td>{{ booking.customer }}</td>
+                <td>{{ booking.customer.phone|default:"—" }}</td>
+                <td>{{ booking.bike.title }}</td>
+                <td>
+                    <span class="status-badge status-{{ booking.status }}">
+                        {{ booking.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ booking.start_at|date:"d.m.Y H:i" }}</td>
+                <td>
+                    <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Открыть</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">Записей нет.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

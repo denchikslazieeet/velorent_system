@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Регистрация</h1>
+    <p>Укажите телефон и придумайте пароль. Остальные данные можно добавить позже в профиле.</p>
+</div>
+
+<form method="post" class="card form-card auth-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {% for error in form.non_field_errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+            {{ form.phone }}
+            {% for error in form.phone.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+            {{ form.password1 }}
+            {% if form.password1.help_text %}
+                <div class="field-hint">{{ form.password1.help_text }}</div>
+            {% endif %}
+            {% for error in form.password1.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+            {{ form.password2 }}
+            {% for error in form.password2.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="checkbox-group">
+        <label class="checkbox-label">
+            {{ form.accept_terms }}
+            <span>Я принимаю условия аренды</span>
+        </label>
+        {% for error in form.accept_terms.errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+
+        <label class="checkbox-label">
+            {{ form.accept_personal_data }}
+            <span>Я даю согласие на обработку персональных данных</span>
+        </label>
+        {% for error in form.accept_personal_data.errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+
+    <button class="btn btn-primary" type="submit">Создать аккаунт</button>
+
+    <div class="auth-divider"><span>или</span></div>
+
+    <a href="{% url 'vk-login' %}" class="btn vk-auth-button">Зарегистрироваться через VK</a>
+    <p class="muted auth-note">
+        Продолжая через VK, вы принимаете условия аренды и согласие на обработку персональных данных.
+    </p>
+
+    <p class="muted" style="margin-top: 14px;">
+        Уже есть аккаунт? <a href="/accounts/login/" class="stat-link">Войти</a>
+    </p>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const phoneInput = document.getElementById("{{ form.phone.id_for_label }}");
+    if (!phoneInput) return;
+
+    phoneInput.addEventListener("input", function () {
+        this.value = this.value.replace(/\D/g, "").slice(0, 11);
+    });
+});
+</script>
+{% endblock %}

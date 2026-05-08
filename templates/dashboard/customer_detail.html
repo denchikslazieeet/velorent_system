@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Карточка клиента{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <div>
+            <h1>{{ customer.get_full_name|default:customer.username }}</h1>
+            <p>{{ customer.phone|default:"Телефон не указан" }}</p>
+        </div>
+        <div class="action-group">
+            <a href="{% url 'operator-customers' %}" class="btn btn-secondary btn-sm">К списку</a>
+            <a href="{% url 'operator-dashboard' %}" class="btn btn-secondary btn-sm">В панель</a>
+        </div>
+    </div>
+</div>
+
+<section class="card booking-summary" style="margin-bottom: 20px;">
+    <div class="summary-grid">
+        <div class="summary-item">
+            <span>Документ</span>
+            {% if customer.document_verified %}
+                <strong>Проверен</strong>
+                <small>{{ customer.get_document_type_display|default:"-" }}</small>
+            {% else %}
+                <strong>Не проверен</strong>
+                <small>потребуется перед выдачей</small>
+            {% endif %}
+        </div>
+        <div class="summary-item">
+            <span>Аренды</span>
+            <strong>{{ total_rentals }}</strong>
+            <small>активных {{ active_rentals }}</small>
+        </div>
+        <div class="summary-item">
+            <span>Завершено</span>
+            <strong>{{ completed_rentals }}</strong>
+            <small>история клиента</small>
+        </div>
+        <div class="summary-item summary-money">
+            <span>Оплачено</span>
+            <strong class="amount amount-positive">{{ total_paid }} ₽</strong>
+            <small>по завершенным арендам</small>
+        </div>
+    </div>
+</section>
+
+<section class="detail-stack">
+    <details class="card operator-collapse">
+        <summary>Данные клиента</summary>
+        <div class="detail-grid grid-2">
+            <div>
+                <div class="list-row">
+                    <span>ФИО</span>
+                    <strong>{{ customer.get_full_name|default:"Не указано" }}</strong>
+                </div>
+                <div class="list-row">
+                    <span>Логин</span>
+                    <strong>{{ customer.username }}</strong>
+                </div>
+                <div class="list-row">
+                    <span>Телефон</span>
+                    <strong>{{ customer.phone|default:"-" }}</strong>
+                </div>
+            </div>
+            <div>
+                <div class="list-row">
+                    <span>Email</span>
+                    <strong>{{ customer.email|default:"-" }}</strong>
+                </div>
+                <div class="list-row">
+                    <span>Telegram</span>
+                    <strong>{{ customer.telegram|default:"-" }}</strong>
+                </div>
+                <div class="list-row">
+                    <span>Регистрация</span>
+                    <strong>{{ customer.date_joined|date:"d.m.Y H:i" }}</strong>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    <details class="card operator-collapse">
+        <summary>Верификация</summary>
+        <div class="detail-grid grid-2">
+            <div class="list-row">
+                <span>Документ проверен</span>
+                <strong>{% if customer.document_verified %}Да{% else %}Нет{% endif %}</strong>
+            </div>
+            <div class="list-row">
+                <span>Тип документа</span>
+                <strong>{{ customer.get_document_type_display|default:"-" }}</strong>
+            </div>
+            <div class="list-row">
+                <span>Последние 4 цифры</span>
+                <strong>{{ customer.document_last4|default:"-" }}</strong>
+            </div>
+            <div class="list-row">
+                <span>Проверил</span>
+                <strong>{{ customer.document_verified_by.staff_display|default:"-" }}</strong>
+            </div>
+        </div>
+    </details>
+
+    <details id="rentals-section" class="card operator-collapse" open>
+        <summary>Аренды клиента</summary>
+        <table class="table detail-table">
+            <thead>
+                <tr>
+                    <th>Бронь</th>
+                    <th>Велосипед</th>
+                    <th>Статус</th>
+                    <th>Выдача</th>
+                    <th>Возврат</th>
+                    <th>Итог</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rental in all_rentals %}
+                <tr>
+                    <td>{{ rental.booking.number }}</td>
+                    <td>{{ rental.booking.bike.title }}</td>
+                    <td>
+                        <span class="status-badge status-{{ rental.status }}">{{ rental.get_status_display }}</span>
+                    </td>
+                    <td>{{ rental.actual_start_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                    <td>{{ rental.actual_end_at|date:"d.m.Y H:i"|default:"-" }}</td>
+                    <td>
+                        <span class="amount {% if rental.final_price > 0 %}amount-positive{% else %}amount-muted{% endif %}">
+                            {{ rental.final_price }} ₽
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'booking-detail' rental.booking.pk %}" class="btn btn-secondary btn-sm">Открыть</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">Аренд пока нет.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </details>
+
+    <details id="payments-section" class="card operator-collapse">
+        <summary>Платежи клиента</summary>
+        <table class="table detail-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Бронь</th>
+                    <th>Тип</th>
+                    <th>Сумма</th>
+                    <th>Метод</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in all_payments %}
+                <tr>
+                    <td>{{ payment.created_at|date:"d.m.Y H:i" }}</td>
+                    <td>{{ payment.booking.number }}</td>
+                    <td>{{ payment.get_kind_display }}</td>
+                    <td>
+                        <span class="amount {% if payment.kind == 'refund' %}amount-refund{% elif payment.status == 'paid' %}amount-positive{% elif payment.status == 'pending' %}amount-warning{% else %}amount-danger{% endif %}">
+                            {{ payment.amount }} ₽
+                        </span>
+                    </td>
+                    <td>{{ payment.get_method_display }}</td>
+                    <td>
+                        <span class="status-badge status-{{ payment.status }}">{{ payment.get_status_display }}</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">Платежей пока нет.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </details>
+</section>
+{% endblock %}

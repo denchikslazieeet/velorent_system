@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Мятный Круизер">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#172033"/>
+      <stop offset="0.55" stop-color="#24324c"/>
+      <stop offset="1" stop-color="#0f1724"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="62%" cy="28%" r="58%">
+      <stop offset="0" stop-color="#5eead4" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" rx="42" fill="url(#bg)"/>
+  <rect width="1200" height="900" rx="42" fill="url(#glow)"/>
+  <path d="M86 710 C250 620 420 665 575 598 C730 530 900 575 1118 450 L1118 900 L86 900 Z" fill="#0b1220" opacity="0.68"/>
+  <g filter="url(#shadow)" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="360" cy="612" r="132" fill="none" stroke="#dbeafe" stroke-width="22" opacity="0.92"/>
+    <circle cx="842" cy="612" r="132" fill="none" stroke="#dbeafe" stroke-width="22" opacity="0.92"/>
+    <circle cx="360" cy="612" r="16" fill="#5eead4"/>
+    <circle cx="842" cy="612" r="16" fill="#5eead4"/>
+    <path d="M360 612 L520 412 L650 612 Z" fill="none" stroke="#5eead4" stroke-width="34"/>
+    <path d="M520 412 L720 412 L842 612" fill="none" stroke="#5eead4" stroke-width="34"/>
+    <path d="M650 612 L720 412" fill="none" stroke="#5eead4" stroke-width="34"/>
+    <path d="M500 382 H605" stroke="#f8fafc" stroke-width="28"/>
+    <path d="M720 412 L755 320" stroke="#f8fafc" stroke-width="28"/>
+    <path d="M742 318 H840" stroke="#f8fafc" stroke-width="24"/>
+    <path d="M520 412 L480 330 H430" stroke="#f8fafc" stroke-width="24"/>
+    <path d="M410 330 H520" stroke="#f8fafc" stroke-width="22"/>
+  </g>
+  <text x="74" y="104" fill="#f8fafc" font-family="Arial, sans-serif" font-size="54" font-weight="700">Мятный Круизер</text>
+  <text x="78" y="158" fill="#bfdbfe" font-family="Arial, sans-serif" font-size="28">ВелоРент / Мятный</text>
+  <rect x="78" y="198" width="154" height="8" rx="4" fill="#5eead4"/>
+</svg>

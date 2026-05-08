@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Подтверждение неявки{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Подтверждение неявки</h1>
+    <p>Отметьте неявку клиента и при необходимости назначьте надбавку на следующее бронирование.</p>
+</div>
+
+<section class="grid grid-2" style="margin-bottom: 20px;">
+    <div class="card">
+        <h3>Информация о брони</h3>
+        <div class="specs">
+            <div>
+                <strong>Номер брони</strong><br>
+                {{ booking.number }}
+            </div>
+            <div>
+                <strong>Клиент</strong><br>
+                {{ booking.customer.full_name_or_phone }}
+            </div>
+            <div>
+                <strong>Велосипед</strong><br>
+                {{ booking.bike.title }}
+            </div>
+            <div>
+                <strong>Начало аренды</strong><br>
+                {{ booking.start_at|date:"d.m.Y H:i" }}
+            </div>
+            <div>
+                <strong>Неявка доступна с</strong><br>
+                {{ no_show_allowed_at|date:"d.m.Y H:i" }}
+            </div>
+            <div>
+                <strong>Текущий статус</strong><br>
+                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Подтверждение</h3>
+        <p class="muted">
+            Если клиент не пришёл в течение 15 минут после запланированного начала аренды,
+            можно отметить неявку и при необходимости назначить надбавку на следующее бронирование.
+        </p>
+
+        <form method="post" action="{% url 'booking-no-show' booking.pk %}" class="form-card" style="margin-top: 18px;">
+            {% csrf_token %}
+            <p>
+                <label>Надбавка на следующее бронирование, ₽/час</label>
+                <input type="number" step="0.01" min="0" name="surcharge_per_hour" placeholder="Например: 100">
+            </p>
+
+            <div class="action-group">
+                <button type="submit" class="btn btn-primary btn-sm">Подтвердить неявку</button>
+                <a href="{% url 'booking-detail' booking.pk %}" class="btn btn-secondary btn-sm">Отмена</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

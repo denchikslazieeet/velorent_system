@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Выручка{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Выручка</h1>
+    <p>Только реальные доходы по арендам и штрафам.</p>
+</div>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span>Общая выручка</span>
+        <strong>{{ total_revenue }} ₽</strong>
+    </div>
+</section>
+
+<section class="card">
+    <h3>Платежи</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Бронь</th>
+                <th>Клиент</th>
+                <th>Велосипед</th>
+                <th>Тип</th>
+                <th>Сумма</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr>
+                <td>{{ payment.created_at|date:"d.m.Y H:i" }}</td>
+                <td>
+                    <a href="{% url 'booking-detail' payment.booking.pk %}">
+                        {{ payment.booking.number }}
+                    </a>
+                </td>
+                <td>{{ payment.booking.customer }}</td>
+                <td>{{ payment.booking.bike.title }}</td>
+                <td>{{ payment.get_kind_display }}</td>
+                <td>{{ payment.amount }} ₽</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">Нет данных по выручке</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

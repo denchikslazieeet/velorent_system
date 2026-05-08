@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Вход в систему</h1>
+    <p>Клиенты попадают в личный кабинет, операторы — в рабочую панель.</p>
+</div>
+
+<section class="auth-layout">
+    <form method="post" class="card form-card auth-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                {{ form.username }}
+                {% for error in form.username.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% for error in form.password.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Войти</button>
+
+        <div class="auth-divider"><span>или</span></div>
+
+        <a href="{% url 'vk-login' %}" class="btn vk-auth-button">Войти через VK</a>
+
+        <div class="auth-links">
+            <span>Нет аккаунта?</span>
+            <a href="/accounts/register/" class="stat-link">Зарегистрироваться</a>
+        </div>
+    </form>
+
+    <aside class="account-claim-panel">
+        <span>Есть код от оператора?</span>
+        <h3>Задайте пароль для уже созданного аккаунта</h3>
+        <p>Если оператор оформил бронь по телефону, введите выданный код и создайте пароль для личного кабинета.</p>
+        <a href="/accounts/claim/" class="btn btn-primary">Задать пароль по коду</a>
+    </aside>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const phoneInput = document.getElementById("{{ form.username.id_for_label }}");
+    if (!phoneInput) return;
+
+    phoneInput.addEventListener("input", function () {
+        this.value = this.value.replace(/\D/g, "").slice(0, 11);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Аналитика{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <h1>Аналитика</h1>
+        <a href="{% url 'operator-dashboard' %}" class="btn btn-secondary btn-sm">Назад в панель</a>
+    </div>
+</div>
+
+<section class="card" style="margin-bottom: 20px;">
+    <h3>Период</h3>
+    <form method="get" class="filter-form">
+        <select name="period" class="table-input filter-select">
+            {% for value, label in period_options %}
+                <option value="{{ value }}" {% if selected_period == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Показать</button>
+    </form>
+</section>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span>Выручка</span>
+        <strong>
+            <a href="{% url 'analytics-payments' %}?period={{ selected_period }}" class="stat-link">
+                {{ analytics_revenue }} ₽
+            </a>
+        </strong>
+    </div>
+    <div class="stat-card">
+        <span>Брони</span>
+        <strong>
+            <a href="{% url 'analytics-bookings' %}?period={{ selected_period }}" class="stat-link">
+                {{ analytics_bookings }}
+            </a>
+        </strong>
+    </div>
+    <div class="stat-card">
+        <span>Завершённые аренды</span>
+        <strong>
+            <a href="{% url 'analytics-rentals' %}?period={{ selected_period }}" class="stat-link">
+                {{ analytics_completed_rentals }}
+            </a>
+        </strong>
+    </div>
+    <div class="stat-card">
+        <span>Неявки</span>
+        <strong>
+            <a href="{% url 'analytics-bookings' %}?period={{ selected_period }}&status=expired" class="stat-link">
+                {{ analytics_no_shows }}
+            </a>
+        </strong>
+    </div>
+</section>
+
+<section class="grid grid-2" style="margin-top: 20px;">
+    <section class="card">
+        <h3>Дополнительная сводка</h3>
+        <div class="list-row">
+            <span>Отменённые брони</span>
+            <strong>
+                <a href="{% url 'analytics-bookings' %}?period={{ selected_period }}&status=cancelled" class="stat-link">
+                    {{ analytics_cancelled }}
+                </a>
+            </strong>
+        </div>
+        <div class="list-row">
+            <span>Завершённые аренды</span>
+            <strong>
+                <a href="{% url 'analytics-rentals' %}?period={{ selected_period }}" class="stat-link">
+                    {{ analytics_completed_rentals }}
+                </a>
+            </strong>
+        </div>
+        <div class="list-row">
+            <span>Неявки</span>
+            <strong>
+                <a href="{% url 'analytics-bookings' %}?period={{ selected_period }}&status=expired" class="stat-link">
+                    {{ analytics_no_shows }}
+                </a>
+            </strong>
+        </div>
+    </section>
+
+    <section class="card">
+        <h3>Популярные велосипеды</h3>
+        {% for bike in popular_bikes %}
+            <div class="list-row">
+                <span>{{ bike.bike__title }}</span>
+                <strong>
+                    <a href="{% url 'analytics-bookings' %}?period={{ selected_period }}&bike={{ bike.bike__title|urlencode }}" class="stat-link">
+                        {{ bike.total }}
+                    </a>
+                </strong>
+            </div>
+        {% empty %}
+            <p>Пока недостаточно данных.</p>
+        {% endfor %}
+    </section>
+</section>
+
+<section class="card" style="margin-top: 20px;">
+    <h3>Выручка по велосипедам</h3>
+    {% for bike in revenue_by_bike %}
+        <div class="list-row">
+            <span>{{ bike.booking__bike__title }}</span>
+            <strong>{{ bike.total }} ₽</strong>
+        </div>
+    {% empty %}
+        <p>Пока недостаточно данных.</p>
+    {% endfor %}
+</section>
+{% endblock %}

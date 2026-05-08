@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ bike.title }}{% endblock %}
+{% block content %}
+<article class="bike-detail">
+    <div class="card">
+        {% if bike.photo %}
+            <div class="bike-detail-media">
+                <img src="{{ bike.photo.url }}" alt="{{ bike.title }}">
+            </div>
+        {% endif %}
+        <h1>{{ bike.title }}</h1>
+        <span class="status-badge status-{{ bike.status }}">
+            {{ bike.get_status_display }}
+        </span>
+
+        <p>{{ bike.description|default:"Описание будет добавлено оператором велопроката." }}</p>
+
+        <div class="specs">
+            <span>Категория: {{ bike.category.name }}</span>
+            <span>Рама: {{ bike.frame_size|default:"—" }}</span>
+            <span>Колёса: {{ bike.wheel_size|default:"—" }}</span>
+            <span>Цвет: {{ bike.color|default:"—" }}</span>
+            <span>Точка выдачи: {{ bike.current_location.name }}</span>
+            {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
+                <span>Серийный номер: {{ bike.serial_number }}</span>
+            {% endif %}
+        </div>
+
+        {% if bike.condition_notes %}
+            <div style="margin-top: 18px;">
+                <strong>Комментарий по состоянию</strong>
+                <p class="muted">{{ bike.condition_notes }}</p>
+            </div>
+        {% endif %}
+
+        {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
+            <div class="action-group" style="margin-top: 20px;">
+                {% if bike.status == 'available' %}
+                    <form method="post" action="{% url 'bike-service' bike.pk %}" class="service-form">
+                        {% csrf_token %}
+                        <input type="text" name="condition_notes" placeholder="Причина обслуживания" class="table-input">
+                        <button type="submit" class="btn btn-secondary btn-sm">Отправить в обслуживание</button>
+                    </form>
+                {% endif %}
+
+                {% if bike.status == 'service' %}
+                    <form method="post" action="{% url 'bike-return-from-service' bike.pk %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">Вернуть в доступные</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <aside class="card sticky">
+        <h3>Тариф</h3>
+        <p><strong>{{ bike.tariff.hourly_rate }} ₽/час</strong></p>
+        <p>Сутки: {{ bike.tariff.daily_rate }} ₽</p>
+        <p>Залог: {{ bike.tariff.deposit_amount }} ₽</p>
+
+        {% if bike.status == 'available' %}
+            <a href="/rentals/book/{{ bike.slug }}/new/" class="btn btn-primary full">Забронировать</a>
+        {% elif bike.status == 'service' %}
+            <div class="card warning-card" style="padding: 16px; margin-top: 14px;">
+                <p style="margin: 0;">Велосипед находится на обслуживании и сейчас недоступен для бронирования.</p>
+            </div>
+        {% else %}
+            <div class="card" style="padding: 16px; margin-top: 14px;">
+                <p style="margin: 0;">Этот велосипед сейчас недоступен для бронирования.</p>
+            </div>
+        {% endif %}
+    </aside>
+</article>
+{% endblock %}

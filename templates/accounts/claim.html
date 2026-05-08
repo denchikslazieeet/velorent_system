@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Доступ к аккаунту{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Доступ к аккаунту</h1>
+    <p>Введите телефон, код от оператора и задайте пароль для личного кабинета.</p>
+</div>
+
+<form method="post" class="card form-card auth-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            {% for error in form.non_field_errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="form-grid">
+        <div class="form-field">
+            <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+            {{ form.phone }}
+            {% for error in form.phone.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>
+            {{ form.code }}
+            {% for error in form.code.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+            {{ form.password1 }}
+            {% if form.password1.help_text %}
+                <div class="field-hint">{{ form.password1.help_text }}</div>
+            {% endif %}
+            {% for error in form.password1.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-field">
+            <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+            {{ form.password2 }}
+            {% for error in form.password2.errors %}
+                <div class="field-error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="checkbox-group">
+        <label class="checkbox-label">
+            {{ form.accept_terms }}
+            <span>Я принимаю условия аренды</span>
+        </label>
+        {% for error in form.accept_terms.errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+
+        <label class="checkbox-label">
+            {{ form.accept_personal_data }}
+            <span>Я даю согласие на обработку персональных данных</span>
+        </label>
+        {% for error in form.accept_personal_data.errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+
+    <button class="btn btn-primary" type="submit">Задать пароль</button>
+
+    <p class="muted" style="margin-top: 14px;">
+        Уже есть пароль? <a href="/accounts/login/" class="stat-link">Войти</a>
+    </p>
+</form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const phoneInput = document.getElementById("{{ form.phone.id_for_label }}");
+    const codeInput = document.getElementById("{{ form.code.id_for_label }}");
+
+    if (phoneInput) {
+        phoneInput.addEventListener("input", function () {
+            this.value = this.value.replace(/\D/g, "").slice(0, 11);
+        });
+    }
+
+    if (codeInput) {
+        codeInput.addEventListener("input", function () {
+            this.value = this.value.replace(/\D/g, "").slice(0, 6);
+        });
+    }
+});
+</script>
+{% endblock %}

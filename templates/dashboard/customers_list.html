@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Клиенты{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <h1>Клиенты</h1>
+        <a href="{% url 'operator-dashboard' %}" class="btn btn-secondary btn-sm">Назад в панель</a>
+    </div>
+</div>
+
+<section class="stats-grid" style="margin-bottom: 20px;">
+    <div class="stat-card">
+        <span>Всего клиентов</span>
+        <strong>{{ customers_total }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Верифицированы</span>
+        <strong>{{ verified_total }}</strong>
+    </div>
+</section>
+
+<section class="card operator-filter-card" style="margin-bottom: 20px;">
+    <h3>Поиск клиентов</h3>
+    <form method="get" class="filter-form">
+        <input
+            type="text"
+            name="q"
+            value="{{ current_query }}"
+            placeholder="ФИО, телефон, логин или email"
+            class="table-input filter-input"
+        >
+        <button type="submit" class="btn btn-primary btn-sm">Найти</button>
+
+        {% if current_query %}
+            <a href="{% url 'operator-customers' %}" class="btn btn-secondary btn-sm">Сбросить</a>
+        {% endif %}
+    </form>
+</section>
+
+<section class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Клиент</th>
+                <th>Телефон</th>
+                <th>Верификация</th>
+                <th>Аренды</th>
+                <th>Завершенные</th>
+                <th>Неявки</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td>
+                    <strong>{{ customer.get_full_name|default:customer.username }}</strong>
+                    {% if customer.email %}
+                        <div class="table-muted">{{ customer.email }}</div>
+                    {% endif %}
+                </td>
+                <td>{{ customer.phone|default:"-" }}</td>
+                <td>
+                    {% if customer.document_verified %}
+                        <span class="status-badge status-completed">Проверен</span>
+                    {% else %}
+                        <span class="status-badge status-pending">Не проверен</span>
+                    {% endif %}
+                </td>
+                <td>{{ customer.total_rentals }}</td>
+                <td>{{ customer.completed_rentals }}</td>
+                <td>{{ customer.no_shows }}</td>
+                <td>
+                    <a href="{% url 'operator-customer-detail' customer.pk %}" class="btn btn-secondary btn-sm">
+                        Открыть
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">Клиенты не найдены.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% if is_paginated %}
+<section class="card" style="margin-top: 20px;">
+    <div class="pagination-bar">
+        <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+
+        <div class="pagination-pages">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if current_query %}&q={{ current_query }}{% endif %}" class="btn btn-secondary btn-sm">Первая</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if current_query %}&q={{ current_query }}{% endif %}" class="btn btn-secondary btn-sm">Назад</a>
+            {% endif %}
+
+            {% for page_number in page_range %}
+                {% if page_number == page_obj.paginator.ELLIPSIS %}
+                    <span class="muted">{{ page_number }}</span>
+                {% elif page_number == page_obj.number %}
+                    <span class="btn btn-secondary btn-sm pagination-current">{{ page_number }}</span>
+                {% else %}
+                    <a href="?page={{ page_number }}{% if current_query %}&q={{ current_query }}{% endif %}" class="btn btn-secondary btn-sm">{{ page_number }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if current_query %}&q={{ current_query }}{% endif %}" class="btn btn-secondary btn-sm">Вперед</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if current_query %}&q={{ current_query }}{% endif %}" class="btn btn-secondary btn-sm">Последняя</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

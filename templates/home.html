@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}ВелоРент - велопрокат{% endblock %}
+
+{% block content %}
+<section class="hero hero-centered">
+    <div class="hero-main hero-main-centered">
+        <span class="eyebrow">Прокат велосипедов</span>
+        <h1>Арендуй велосипед быстро и удобно</h1>
+        <p>
+            Выберите доступный велосипед, оформите бронь онлайн и получите номер заказа.
+        </p>
+
+        {% if not request.user.is_authenticated %}
+            <div class="hero-actions hero-actions-centered">
+                <a href="/accounts/login/" class="btn btn-secondary">Войти</a>
+                <a href="/accounts/register/" class="btn btn-primary">Регистрация</a>
+            </div>
+        {% elif request.user.role == 'customer' %}
+            <div class="hero-actions hero-actions-centered">
+                <a href="/dashboard/" class="btn btn-primary">Личный кабинет</a>
+            </div>
+        {% else %}
+            <div class="hero-actions hero-actions-centered">
+                <a href="/operator/" class="btn btn-primary">Панель оператора</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

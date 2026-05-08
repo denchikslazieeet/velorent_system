@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Панель оператора{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <div class="section-head">
+        <h1>Панель оператора</h1>
+        <div class="action-group">
+            <a href="{% url 'operator-bikes' %}" class="btn btn-secondary btn-sm">Велосипеды</a>
+            <a href="{% url 'operator-customers' %}" class="btn btn-secondary btn-sm">Клиенты</a>
+            <a href="{% url 'operator-analytics' %}" class="btn btn-secondary btn-sm">Открыть аналитику</a>
+        </div>
+    </div>
+</div>
+
+<section class="stats-grid">
+    <div class="stat-card">
+        <span>Свободные велосипеды</span>
+        <strong>
+            <a href="{% url 'operator-bikes' %}?status=available" class="stat-link">{{ available_bikes }}</a>
+        </strong>
+    </div>
+    <div class="stat-card">
+        <span>Активные аренды</span>
+        <strong>{{ active_rentals }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Ожидают подтверждения</span>
+        <strong>{{ pending_bookings }}</strong>
+    </div>
+    <div class="stat-card">
+        <span>Клиенты</span>
+        <strong>
+            <a href="{% url 'operator-customers' %}" class="stat-link">{{ customers_total }}</a>
+        </strong>
+    </div>
+    <div class="stat-card">
+        <span>Выручка</span>
+        <strong>
+            <a href="{% url 'operator-revenue' %}" class="stat-link">{{ revenue }} ₽</a>
+        </strong>
+    </div>
+</section>
+
+<section class="grid grid-2" style="margin-bottom: 20px;">
+    <section class="card compact-card">
+        <div class="section-head">
+            <h3>Краткая аналитика</h3>
+        </div>
+
+        <div class="list-row">
+            <span>Выручка за сегодня</span>
+            <strong>{{ revenue_today }} ₽</strong>
+        </div>
+        <div class="list-row">
+            <span>Выручка за 7 дней</span>
+            <strong>{{ revenue_week }} ₽</strong>
+        </div>
+        <div class="list-row">
+            <span>Брони за сегодня</span>
+            <strong>{{ bookings_today }}</strong>
+        </div>
+        <div class="list-row">
+            <span>Неявки</span>
+            <strong>{{ no_shows_total }}</strong>
+        </div>
+        <div class="list-row">
+            <span>Завершённые аренды</span>
+            <strong>{{ completed_rentals_total }}</strong>
+        </div>
+    </section>
+
+    <section class="card compact-card">
+        <div class="section-head">
+            <h3>Популярные велосипеды</h3>
+        </div>
+
+        {% for bike in popular_bikes %}
+            <div class="list-row">
+                <span>{{ bike.bike__title }}</span>
+                <strong>{{ bike.total }}</strong>
+            </div>
+        {% empty %}
+            <p>Пока недостаточно данных.</p>
+        {% endfor %}
+    </section>
+</section>
+
+<section class="card operator-filter-card" style="margin-bottom: 20px;">
+    <h3>Поиск и фильтры</h3>
+    <form method="get" class="filter-form">
+        <input
+            type="text"
+            name="q"
+            value="{{ current_query }}"
+            placeholder="Номер брони, ФИО или телефон"
+            class="table-input filter-input"
+        >
+
+        <select name="status" class="table-input filter-select">
+            <option value="">Все статусы</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+
+        {% if current_query or current_status %}
+            <a href="{% url 'operator-dashboard' %}" class="btn btn-secondary btn-sm">Сбросить</a>
+        {% endif %}
+    </form>
+</section>
+
+<details class="card operator-collapse" open style="margin-bottom: 20px;">
+    <summary>Бронирования</summary>
+
+    <div style="margin-top: 18px;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Номер</th>
+                    <th>Клиент</th>
+                    <th>Телефон</th>
+                    <th>Велосипед</th>
+                    <th>Статус</th>
+                    <th>Начало</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in recent_bookings %}
+                <tr class="
+                    {% if booking.status == 'active' %}booking-row-active{% endif %}
+                    {% if booking.status == 'pending' %}booking-row-pending{% endif %}
+                    {% if booking.status == 'confirmed' %}booking-row-confirmed{% endif %}
+                ">
+                    <td>{{ booking.number }}</td>
+                    <td>{{ booking.customer }}</td>
+                    <td>{{ booking.customer.phone|default:"—" }}</td>
+                    <td>{{ booking.bike.title }}</td>
+                    <td>
+                        <span class="status-badge status-{{ booking.status }}">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ booking.start_at|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        <div class="action-group">
+                            <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Открыть</a>
+
+                            {% if booking.status == 'pending' %}
+                                <form method="post" action="/rentals/operator/booking/{{ booking.pk }}/confirm/" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary btn-sm">Подтвердить</button>
+                                </form>
+                            {% endif %}
+
+                            {% if booking.status == 'confirmed' %}
+                                <form method="post" action="/rentals/operator/booking/{{ booking.pk }}/issue/" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-primary btn-sm">Выдать</button>
+                                </form>
+                            {% endif %}
+
+                            {% if booking.status == 'active' %}
+                                <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Завершить аренду</a>
+                            {% endif %}
+
+                            {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+                                <form method="post" action="/rentals/booking/{{ booking.pk }}/cancel/" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-secondary btn-sm">Отменить</button>
+                                </form>
+
+                                <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Неявка</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">По вашему запросу ничего не найдено.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
+
+<section class="card compact-card">
+    <div class="section-head">
+        <div>
+            <h3>Парк велосипедов</h3>
+            <p class="muted">Отдельная рабочая страница без лишней информации.</p>
+        </div>
+        <a href="{% url 'operator-bikes' %}" class="btn btn-primary btn-sm">Открыть</a>
+    </div>
+</section>
+{% endblock %}
