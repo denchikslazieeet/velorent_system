@@ -1,9 +1,9 @@
 {% load static %}
-const CACHE_NAME = "velorent-pwa-v2";
+const CACHE_NAME = "velorent-pwa-v3";
 const OFFLINE_URL = "{% url 'offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "{% static 'css/style.css' %}?v=20260510-6",
+  "{% static 'css/style.css' %}?v=20260511-1",
   "{% static 'img/velorent-icon.svg' %}",
   "{% static 'img/pwa-icon-192.png' %}",
   "{% static 'img/pwa-icon-512.png' %}"

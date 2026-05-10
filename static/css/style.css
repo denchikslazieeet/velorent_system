@@ -57,6 +57,17 @@ a {
     text-decoration: none;
 }
 
+button,
+[role="button"],
+.btn {
+    cursor: pointer;
+}
+
+button:disabled,
+.btn[disabled] {
+    cursor: not-allowed;
+}
+
 .container {
     width: min(1120px, calc(100% - 32px));
     margin: 0 auto;
@@ -357,6 +368,7 @@ a {
 
 .back-button {
     min-width: 92px;
+    cursor: pointer;
 }
 
 .scroll-top-button {
@@ -925,6 +937,12 @@ input[type="radio"] {
 .auth-form .btn {
     justify-self: start;
     min-width: 82px;
+}
+
+.auth-submit-row {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
 }
 
 .stats-grid {
