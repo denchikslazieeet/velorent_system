@@ -6,7 +6,6 @@
     <div class="section-head">
         <div>
             <h1>Профиль</h1>
-            <p>Контакты, уведомления и статус верификации.</p>
         </div>
         <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
     </div>
@@ -33,10 +32,7 @@
         {% csrf_token %}
 
         <div class="section-head">
-            <div>
-                <h3>Личные данные</h3>
-                <p class="muted">Эти данные помогут оператору быстрее найти вашу бронь.</p>
-            </div>
+            <h3>Личные данные</h3>
         </div>
 
         {% if form.non_field_errors %}

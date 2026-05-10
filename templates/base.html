@@ -60,8 +60,15 @@
             {% endfor %}
         </div>
     {% endif %}
+    {% if request.resolver_match.url_name != 'home' %}
+        <div class="page-back-row">
+            <button type="button" class="btn btn-secondary btn-sm back-button" data-back-button>Назад</button>
+        </div>
+    {% endif %}
     {% block content %}{% endblock %}
 </main>
+
+<button type="button" class="scroll-top-button" data-scroll-top aria-label="Наверх">↑</button>
 
 <footer class="site-footer">
     <div class="container footer-content">
@@ -69,5 +76,31 @@
         <a href="{% url 'terms' %}">Условия аренды</a>
     </div>
 </footer>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const backButton = document.querySelector("[data-back-button]");
+    if (backButton) {
+        backButton.addEventListener("click", function () {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = "/";
+            }
+        });
+    }
+
+    const scrollTopButton = document.querySelector("[data-scroll-top]");
+    if (scrollTopButton) {
+        const toggleScrollButton = function () {
+            scrollTopButton.classList.toggle("is-visible", window.scrollY > 360);
+        };
+        window.addEventListener("scroll", toggleScrollButton, { passive: true });
+        toggleScrollButton();
+        scrollTopButton.addEventListener("click", function () {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+    }
+});
+</script>
 </body>
 </html>
