@@ -30,6 +30,20 @@
 </section>
 {% endif %}
 
+{% if upcoming_booking %}
+<section class="card upcoming-booking-card" style="margin-bottom: 20px;">
+    <div>
+        <span>Ближайшая бронь</span>
+        <h3>{{ upcoming_booking.bike.title }}</h3>
+        <p>{{ upcoming_booking.start_at|date:"d.m.Y H:i" }} · {{ upcoming_booking.pickup_location.name }}</p>
+    </div>
+    <div class="upcoming-booking-actions">
+        <span class="status-badge status-{{ upcoming_booking.status }}">{{ upcoming_booking.get_status_display }}</span>
+        <a href="{% url 'booking-detail' upcoming_booking.pk %}" class="btn btn-primary btn-sm">Открыть</a>
+    </div>
+</section>
+{% endif %}
+
 <section class="stats-grid stats-grid-single">
     <div class="stat-card">
         <span>Заказы</span>

@@ -95,7 +95,7 @@
                 {% endif %}
 
                 {% if booking.status == 'active' %}
-                    <form method="post" action="{% url 'rental-return' booking.pk %}" class="return-form">
+                    <form method="post" action="{% url 'rental-return' booking.pk %}" class="return-form" data-confirm="Завершить аренду {{ booking.number }}? Проверьте суммы и состояние велосипеда.">
                         {% csrf_token %}
                         <input type="number" step="0.01" name="extra_time_fee" placeholder="Доплата, ₽" class="table-input">
                         <input type="number" step="0.01" name="damage_fee" placeholder="Штраф, ₽" class="table-input">
@@ -117,7 +117,7 @@
                 {% endif %}
 
                 {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                    <form method="post" action="{% url 'booking-cancel' booking.pk %}" class="inline-form">
+                    <form method="post" action="{% url 'booking-cancel' booking.pk %}" class="inline-form" data-confirm="Отменить бронь {{ booking.number }}?">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-secondary btn-sm">Отменить</button>
                     </form>
@@ -130,7 +130,7 @@
                 {% endif %}
             {% else %}
                 {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                    <form method="post" action="{% url 'booking-cancel' booking.pk %}" class="inline-form">
+                    <form method="post" action="{% url 'booking-cancel' booking.pk %}" class="inline-form" data-confirm="Отменить бронь {{ booking.number }}?">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-secondary btn-sm">Отменить бронь</button>
                     </form>

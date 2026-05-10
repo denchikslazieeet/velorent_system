@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ВелоРент{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260510">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510-2">
 </head>
 <body>
 <header class="site-header">
@@ -97,6 +97,21 @@ document.addEventListener("DOMContentLoaded", function () {
             window.scrollTo({ top: 0, behavior: "smooth" });
         });
     }
+
+    document.querySelectorAll("[data-confirm]").forEach(function (element) {
+        const confirmAction = function (event) {
+            const message = element.getAttribute("data-confirm") || "Подтвердить действие?";
+            if (!window.confirm(message)) {
+                event.preventDefault();
+            }
+        };
+
+        if (element.tagName === "FORM") {
+            element.addEventListener("submit", confirmAction);
+        } else {
+            element.addEventListener("click", confirmAction);
+        }
+    });
 });
 </script>
 </body>

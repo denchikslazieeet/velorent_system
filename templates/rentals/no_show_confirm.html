@@ -45,7 +45,7 @@
             можно отметить неявку и при необходимости назначить надбавку на следующее бронирование.
         </p>
 
-        <form method="post" action="{% url 'booking-no-show' booking.pk %}" class="form-card" style="margin-top: 18px;">
+        <form method="post" action="{% url 'booking-no-show' booking.pk %}" class="form-card" style="margin-top: 18px;" data-confirm="Точно отметить неявку по брони {{ booking.number }}?">
             {% csrf_token %}
             <p>
                 <label>Надбавка на следующее бронирование, ₽/час</label>

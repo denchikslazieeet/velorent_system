@@ -130,7 +130,19 @@
 
 <section class="card operator-filter-card" style="margin-bottom: 20px;">
     <h3>Поиск и фильтры</h3>
+    <div class="quick-filter-row">
+        {% for filter in quick_filters %}
+            <a href="{{ filter.url }}" class="quick-filter {% if current_quick == filter.key %}quick-filter-active{% endif %}">
+                <span>{{ filter.label }}</span>
+                <strong>{{ filter.count }}</strong>
+            </a>
+        {% endfor %}
+    </div>
+
     <form method="get" class="filter-form">
+        {% if current_quick %}
+            <input type="hidden" name="quick" value="{{ current_quick }}">
+        {% endif %}
         <input
             type="text"
             name="q"
@@ -168,6 +180,8 @@
                     <th>Телефон</th>
                     <th>Велосипед</th>
                     <th>Статус</th>
+                    <th>Следующий шаг</th>
+                    <th>Внимание</th>
                     <th>Начало</th>
                     <th>Действия</th>
                 </tr>
@@ -187,6 +201,22 @@
                         <span class="status-badge status-{{ booking.status }}">
                             {{ booking.get_status_display }}
                         </span>
+                    </td>
+                    <td>
+                        <span class="next-action next-action-{{ booking.operator_next_action.tone }}">
+                            {{ booking.operator_next_action.label }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if booking.attention_badges %}
+                            <div class="attention-badges">
+                                {% for badge in booking.attention_badges %}
+                                    <span class="attention-badge attention-{{ badge.tone }}">{{ badge.label }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
                     </td>
                     <td>{{ booking.start_at|date:"d.m.Y H:i" }}</td>
                     <td>
@@ -212,19 +242,19 @@
                             {% endif %}
 
                             {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                                <form method="post" action="/rentals/booking/{{ booking.pk }}/cancel/" class="inline-form">
+                                <form method="post" action="/rentals/booking/{{ booking.pk }}/cancel/" class="inline-form" data-confirm="Отменить бронь {{ booking.number }}?">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-secondary btn-sm">Отменить</button>
                                 </form>
 
-                                <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Неявка</a>
+                                <a href="{% url 'booking-no-show-confirm' booking.pk %}" class="btn btn-secondary btn-sm">Неявка</a>
                             {% endif %}
                         </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7">
+                    <td colspan="9">
                         <div class="empty-state empty-state-table">
                             <strong>Брони не найдены</strong>
                             <p>Попробуйте изменить фильтр или создайте новую бронь для клиента.</p>

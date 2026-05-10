@@ -14,6 +14,55 @@ from .mixins import OperatorRequiredMixin
 User = get_user_model()
 
 
+def booking_rental(booking):
+    try:
+        return booking.rental
+    except Rental.DoesNotExist:
+        return None
+
+
+def booking_next_action(booking, now, today_start, tomorrow_start):
+    rental = booking_rental(booking)
+    if booking.status == Booking.Status.PENDING:
+        return {'label': 'Подтвердить', 'tone': 'warning'}
+    if booking.status == Booking.Status.CONFIRMED:
+        if today_start <= booking.start_at < tomorrow_start:
+            return {'label': 'Выдать сегодня', 'tone': 'info'}
+        return {'label': 'Ждет выдачи', 'tone': 'info'}
+    if booking.status == Booking.Status.ACTIVE:
+        if booking.end_at < now:
+            return {'label': 'Принять возврат', 'tone': 'danger'}
+        if booking.end_at < tomorrow_start:
+            return {'label': 'Вернуть сегодня', 'tone': 'warning'}
+        if rental and rental.status == Rental.Status.ACTIVE:
+            return {'label': 'В аренде', 'tone': 'active'}
+        return {'label': 'Проверить аренду', 'tone': 'warning'}
+    if booking.status == Booking.Status.COMPLETED:
+        return {'label': 'Закрыто', 'tone': 'completed'}
+    if booking.status == Booking.Status.EXPIRED:
+        return {'label': 'Неявка', 'tone': 'danger'}
+    if booking.status == Booking.Status.CANCELLED:
+        return {'label': 'Отменено', 'tone': 'muted'}
+    return {'label': 'Проверить', 'tone': 'info'}
+
+
+def booking_attention_badges(booking, now, today_start, tomorrow_start):
+    badges = []
+    if not booking.customer.document_verified:
+        badges.append({'label': 'Документ', 'tone': 'warning'})
+    if not booking.customer.email:
+        badges.append({'label': 'Нет email', 'tone': 'info'})
+    if booking.status == Booking.Status.CONFIRMED and today_start <= booking.start_at < tomorrow_start:
+        badges.append({'label': 'Выдача сегодня', 'tone': 'info'})
+    if booking.status == Booking.Status.ACTIVE and booking.end_at < now:
+        badges.append({'label': 'Возврат просрочен', 'tone': 'danger'})
+    elif booking.status == Booking.Status.ACTIVE and booking.end_at < tomorrow_start:
+        badges.append({'label': 'Возврат сегодня', 'tone': 'warning'})
+    if booking.payments.filter(status=Payment.Status.PENDING).exists():
+        badges.append({'label': 'Оплата', 'tone': 'warning'})
+    return badges
+
+
 class HomePageView(TemplateView):
     template_name = 'home.html'
 
@@ -27,11 +76,27 @@ class UserDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        now = timezone.now()
         context['bookings'] = (
             Booking.objects
             .filter(customer=self.request.user)
             .select_related('bike')
             .order_by('-created_at')[:5]
+        )
+        context['upcoming_booking'] = (
+            Booking.objects
+            .filter(
+                customer=self.request.user,
+                start_at__gte=now,
+                status__in=[
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                    Booking.Status.ACTIVE,
+                ],
+            )
+            .select_related('bike', 'pickup_location')
+            .order_by('start_at')
+            .first()
         )
         context['rentals'] = (
             Rental.objects
@@ -50,9 +115,11 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
 
         q = (self.request.GET.get('q') or '').strip()
         status = (self.request.GET.get('status') or '').strip()
+        quick = (self.request.GET.get('quick') or '').strip()
 
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_start = today_start + timedelta(days=1)
         week_start = today_start - timedelta(days=6)
 
         context['available_bikes'] = Bike.objects.filter(status=Bike.Status.AVAILABLE).count()
@@ -61,12 +128,11 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         context['upcoming_today'] = Booking.objects.filter(
             status=Booking.Status.CONFIRMED,
             start_at__gte=today_start,
-            start_at__lt=today_start + timedelta(days=1),
+            start_at__lt=tomorrow_start,
         ).count()
         context['returns_today'] = Booking.objects.filter(
             status=Booking.Status.ACTIVE,
-            end_at__gte=today_start,
-            end_at__lt=today_start + timedelta(days=1),
+            end_at__lt=tomorrow_start,
         ).count()
         context['service_bikes'] = Bike.objects.filter(status=Bike.Status.SERVICE).count()
 
@@ -106,11 +172,28 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         context['no_shows_total'] = Booking.objects.filter(status=Booking.Status.EXPIRED).count()
         context['completed_rentals_total'] = Rental.objects.filter(status=Rental.Status.COMPLETED).count()
 
-        bookings = (
+        base_bookings = (
             Booking.objects
             .select_related('bike', 'customer', 'rental')
             .order_by('-created_at')
         )
+        bookings = base_bookings
+
+        if quick == 'pending':
+            bookings = bookings.filter(status=Booking.Status.PENDING)
+        elif quick == 'today':
+            bookings = bookings.filter(
+                status=Booking.Status.CONFIRMED,
+                start_at__gte=today_start,
+                start_at__lt=tomorrow_start,
+            )
+        elif quick == 'active':
+            bookings = bookings.filter(status=Booking.Status.ACTIVE)
+        elif quick == 'returns':
+            bookings = bookings.filter(
+                status=Booking.Status.ACTIVE,
+                end_at__lt=tomorrow_start,
+            )
 
         if q:
             bookings = bookings.filter(
@@ -124,10 +207,58 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         if status:
             bookings = bookings.filter(status=status)
 
-        context['recent_bookings'] = bookings[:20]
+        recent_bookings = list(bookings[:20])
+        for booking in recent_bookings:
+            booking.operator_next_action = booking_next_action(
+                booking,
+                now,
+                today_start,
+                tomorrow_start,
+            )
+            booking.attention_badges = booking_attention_badges(
+                booking,
+                now,
+                today_start,
+                tomorrow_start,
+            )
+
+        context['recent_bookings'] = recent_bookings
         context['current_query'] = q
         context['current_status'] = status
+        context['current_quick'] = quick
         context['status_choices'] = Booking.Status.choices
+        context['quick_filters'] = [
+            {
+                'key': '',
+                'label': 'Все',
+                'count': base_bookings.count(),
+                'url': reverse('operator-dashboard'),
+            },
+            {
+                'key': 'pending',
+                'label': 'Новые',
+                'count': context['pending_bookings'],
+                'url': f"{reverse('operator-dashboard')}?quick=pending",
+            },
+            {
+                'key': 'today',
+                'label': 'Выдать сегодня',
+                'count': context['upcoming_today'],
+                'url': f"{reverse('operator-dashboard')}?quick=today",
+            },
+            {
+                'key': 'active',
+                'label': 'Активные',
+                'count': context['active_rentals'],
+                'url': f"{reverse('operator-dashboard')}?quick=active",
+            },
+            {
+                'key': 'returns',
+                'label': 'Вернуть сегодня',
+                'count': context['returns_today'],
+                'url': f"{reverse('operator-dashboard')}?quick=returns",
+            },
+        ]
 
         context['operator_bikes'] = (
             Bike.objects
@@ -168,7 +299,7 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
             {
                 'label': 'Вернуть сегодня',
                 'value': context['returns_today'],
-                'note': 'Аренды с плановым возвратом сегодня.',
+                'note': 'Плановые и просроченные возвраты.',
                 'url': f"{reverse('operator-dashboard')}?status={Booking.Status.ACTIVE}",
                 'tone': 'warning',
             },
