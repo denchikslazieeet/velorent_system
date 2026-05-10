@@ -508,6 +508,7 @@ a {
     min-height: 40px;
     text-align: center;
     white-space: normal;
+    cursor: pointer;
     transition: 0.2s ease;
 }
 
@@ -916,11 +917,14 @@ input[type="radio"] {
 }
 
 .auth-form {
+    display: grid;
+    gap: 14px;
     max-width: 720px;
 }
 
 .auth-form .btn {
     justify-self: start;
+    min-width: 82px;
 }
 
 .stats-grid {

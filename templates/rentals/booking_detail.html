@@ -142,27 +142,29 @@
     </section>
 </section>
 
-<section class="card map-card">
-    <div class="map-card-info">
-        <span>Как добраться</span>
-        <h3>{{ booking.pickup_location.name }}</h3>
-        <p>{{ booking.pickup_location.address }}</p>
-        <div class="action-group">
-            <a href="{{ booking.pickup_location.route_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
-                Построить маршрут
-            </a>
-            <a href="{{ booking.pickup_location.map_search_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
-                Открыть карту
-            </a>
+{% if request.user.role != 'operator' and request.user.role != 'admin' and not request.user.is_staff and not request.user.is_superuser %}
+    <section class="card map-card">
+        <div class="map-card-info">
+            <span>Как добраться</span>
+            <h3>{{ booking.pickup_location.name }}</h3>
+            <p>{{ booking.pickup_location.address }}</p>
+            <div class="action-group">
+                <a href="{{ booking.pickup_location.route_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                    Построить маршрут
+                </a>
+                <a href="{{ booking.pickup_location.map_search_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+                    Открыть карту
+                </a>
+            </div>
         </div>
-    </div>
-    <iframe
-        class="map-frame"
-        src="{{ booking.pickup_location.map_embed_url }}"
-        title="Карта точки выдачи {{ booking.pickup_location.name }}"
-        loading="lazy"
-    ></iframe>
-</section>
+        <iframe
+            class="map-frame"
+            src="{{ booking.pickup_location.map_embed_url }}"
+            title="Карта точки выдачи {{ booking.pickup_location.name }}"
+            loading="lazy"
+        ></iframe>
+    </section>
+{% endif %}
 
 <section class="detail-stack">
     <details class="card operator-collapse" open>

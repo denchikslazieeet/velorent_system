@@ -121,7 +121,14 @@ class UserLoginForm(AuthenticationForm):
     )
 
     def clean_username(self):
-        return normalize_phone(self.cleaned_data["username"])
+        raw_value = self.cleaned_data["username"].strip()
+        phone = normalize_phone(raw_value)
+        if len(phone) == 11 and phone.startswith("7"):
+            user = User.objects.filter(phone=phone).only("username").first()
+            if user:
+                return user.username
+            return phone
+        return raw_value
 
 
 class ProfileForm(forms.ModelForm):

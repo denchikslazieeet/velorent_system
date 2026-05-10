@@ -56,6 +56,23 @@ class AccountClaimFormTests(TestCase):
         self.assertEqual(self.access_code.attempts, 1)
 
 
+class UserLoginTests(TestCase):
+    def test_customer_can_login_by_phone_even_when_username_is_not_phone(self):
+        User.objects.create_user(
+            username="customer01",
+            phone="79961543021",
+            password="Mechabear1001",
+            role=User.Role.CUSTOMER,
+        )
+
+        response = self.client.post(reverse("login"), {
+            "username": "8 996 154-30-21",
+            "password": "Mechabear1001",
+        })
+
+        self.assertRedirects(response, reverse("user-dashboard"))
+
+
 class VKOAuthViewTests(TestCase):
     @override_settings(VK_CLIENT_ID="123", VK_CLIENT_SECRET="secret")
     def test_vk_login_redirects_to_vk_and_stores_state(self):
