@@ -19,10 +19,10 @@
         <strong>{{ account_access_code_notice.code }}</strong>
     </div>
     <p>
-        Передайте этот код клиенту лично. Он задаст пароль на странице
-        <a href="{% url 'account-claim' %}">/accounts/claim/</a>.
+        Передайте этот код клиенту лично. Он задаст пароль на странице доступа к аккаунту.
         Код действует {{ account_access_code_notice.ttl_minutes }} минут.
     </p>
+    <a href="{% url 'account-claim' %}" class="btn btn-secondary btn-sm">Открыть страницу доступа</a>
 </section>
 {% endif %}
 

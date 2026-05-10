@@ -100,8 +100,38 @@
 
 <footer class="site-footer">
     <div class="container footer-content">
-        <p>ВелоРент</p>
-        <a href="{% url 'terms' %}">Условия аренды</a>
+        <div class="footer-brand">
+            <strong>ВелоРент</strong>
+            <a href="{% url 'terms' %}">Условия аренды</a>
+        </div>
+
+        {% if primary_pickup_location %}
+            <div class="footer-location">
+                <div>
+                    <span>Точка выдачи</span>
+                    <strong>{{ primary_pickup_location.name }}</strong>
+                </div>
+                <div>
+                    <span>Адрес</span>
+                    <strong>{{ primary_pickup_location.address }}</strong>
+                </div>
+                {% if primary_pickup_location.phone %}
+                    <div>
+                        <span>Телефон</span>
+                        <strong>{{ primary_pickup_location.phone }}</strong>
+                    </div>
+                {% endif %}
+                {% if primary_pickup_location.opening_hours %}
+                    <div>
+                        <span>Время работы</span>
+                        <strong>{{ primary_pickup_location.opening_hours }}</strong>
+                    </div>
+                {% endif %}
+                <a href="{{ primary_pickup_location.route_url }}" target="_blank" rel="noopener" class="footer-route-link">
+                    Построить маршрут
+                </a>
+            </div>
+        {% endif %}
     </div>
 </footer>
 <script>

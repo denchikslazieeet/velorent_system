@@ -54,6 +54,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.unread_notifications",
+                "accounts.context_processors.primary_pickup_location",
             ],
         },
     },
