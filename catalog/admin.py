@@ -3,8 +3,9 @@ from .models import Bike, BikeCategory, PickupLocation, Tariff
 
 @admin.register(PickupLocation)
 class PickupLocationAdmin(admin.ModelAdmin):
-    list_display = ("name", "address", "phone", "is_active")
+    list_display = ("name", "address", "phone", "latitude", "longitude", "is_active")
     list_filter = ("is_active",)
+    search_fields = ("name", "address", "phone")
 
 @admin.register(BikeCategory)
 class BikeCategoryAdmin(admin.ModelAdmin):

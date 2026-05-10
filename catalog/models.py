@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from django.db import models
 
 class PickupLocation(models.Model):
@@ -5,6 +7,9 @@ class PickupLocation(models.Model):
     address = models.CharField("Адрес", max_length=255)
     phone = models.CharField("Телефон", max_length=20, blank=True)
     opening_hours = models.CharField("Часы работы", max_length=120, blank=True)
+    latitude = models.DecimalField("Широта", max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField("Долгота", max_digits=9, decimal_places=6, null=True, blank=True)
+    map_url = models.URLField("Ссылка на карту", blank=True)
     is_active = models.BooleanField("Активна", default=True)
 
     class Meta:
@@ -13,6 +18,30 @@ class PickupLocation(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def map_query(self):
+        return self.address or self.name
+
+    @property
+    def map_search_url(self):
+        if self.map_url:
+            return self.map_url
+        if self.latitude and self.longitude:
+            return f"https://yandex.ru/maps/?ll={self.longitude}%2C{self.latitude}&z=16&pt={self.longitude},{self.latitude},pm2rdm"
+        return f"https://yandex.ru/maps/?text={quote_plus(self.map_query)}"
+
+    @property
+    def route_url(self):
+        if self.latitude and self.longitude:
+            return f"https://yandex.ru/maps/?rtext=~{self.latitude}%2C{self.longitude}&rtt=auto"
+        return self.map_search_url
+
+    @property
+    def map_embed_url(self):
+        if self.latitude and self.longitude:
+            return f"https://yandex.ru/map-widget/v1/?ll={self.longitude}%2C{self.latitude}&z=16&pt={self.longitude},{self.latitude},pm2rdm"
+        return f"https://yandex.ru/map-widget/v1/?text={quote_plus(self.map_query)}"
 
 class BikeCategory(models.Model):
     name = models.CharField("Категория", max_length=100)

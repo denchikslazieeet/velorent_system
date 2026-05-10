@@ -59,6 +59,24 @@
         <p>Сутки: {{ bike.tariff.daily_rate }} ₽</p>
         <p>Залог: {{ bike.tariff.deposit_amount }} ₽</p>
 
+        <div class="pickup-map-block">
+            <h3>Точка выдачи</h3>
+            <strong>{{ bike.current_location.name }}</strong>
+            <p class="muted">{{ bike.current_location.address }}</p>
+            {% if bike.current_location.opening_hours %}
+                <p class="muted">Время работы: {{ bike.current_location.opening_hours }}</p>
+            {% endif %}
+            <iframe
+                class="map-frame map-frame-small"
+                src="{{ bike.current_location.map_embed_url }}"
+                title="Карта точки выдачи {{ bike.current_location.name }}"
+                loading="lazy"
+            ></iframe>
+            <a href="{{ bike.current_location.route_url }}" target="_blank" rel="noopener" class="btn btn-secondary full">
+                Построить маршрут
+            </a>
+        </div>
+
         {% if bike.status == 'available' %}
             <a href="/rentals/book/{{ bike.slug }}/new/" class="btn btn-primary full">Забронировать</a>
         {% elif bike.status == 'service' %}

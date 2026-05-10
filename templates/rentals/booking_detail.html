@@ -142,6 +142,28 @@
     </section>
 </section>
 
+<section class="card map-card">
+    <div class="map-card-info">
+        <span>Как добраться</span>
+        <h3>{{ booking.pickup_location.name }}</h3>
+        <p>{{ booking.pickup_location.address }}</p>
+        <div class="action-group">
+            <a href="{{ booking.pickup_location.route_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                Построить маршрут
+            </a>
+            <a href="{{ booking.pickup_location.map_search_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+                Открыть карту
+            </a>
+        </div>
+    </div>
+    <iframe
+        class="map-frame"
+        src="{{ booking.pickup_location.map_embed_url }}"
+        title="Карта точки выдачи {{ booking.pickup_location.name }}"
+        loading="lazy"
+    ></iframe>
+</section>
+
 <section class="detail-stack">
     <details class="card operator-collapse" open>
         <summary>История брони</summary>
