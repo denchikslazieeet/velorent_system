@@ -4,8 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ВелоРент{% endblock %}</title>
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem("velorent-theme");
+            const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+            document.documentElement.dataset.theme = savedTheme || (prefersLight ? "light" : "dark");
+        })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260510-3">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510-4">
 </head>
 <body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% endif %}">
 <header class="site-header">
@@ -22,6 +29,11 @@
                     <a href="/dashboard/">Личный кабинет</a>
                     <a href="/accounts/profile/">Профиль</a>
                 {% endif %}
+
+                <button type="button" class="theme-toggle" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">
+                    <span class="theme-toggle-dark" aria-hidden="true">☾</span>
+                    <span class="theme-toggle-light" aria-hidden="true">☀</span>
+                </button>
 
                 <a href="{% url 'notifications' %}" class="notification-nav-link" aria-label="Уведомления" title="Уведомления">
                     <span class="notification-icon" aria-hidden="true">
@@ -44,6 +56,10 @@
                 <a href="{% url 'terms' %}">Условия</a>
                 <a href="/accounts/login/">Войти</a>
                 <a href="/accounts/register/" class="nav-accent">Регистрация</a>
+                <button type="button" class="theme-toggle" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">
+                    <span class="theme-toggle-dark" aria-hidden="true">☾</span>
+                    <span class="theme-toggle-light" aria-hidden="true">☀</span>
+                </button>
             {% endif %}
         </nav>
     </div>
@@ -90,6 +106,20 @@
 </footer>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const themeToggle = document.querySelector("[data-theme-toggle]");
+    if (themeToggle) {
+        const setTheme = function (theme) {
+            document.documentElement.dataset.theme = theme;
+            localStorage.setItem("velorent-theme", theme);
+            themeToggle.setAttribute("aria-label", theme === "light" ? "Включить темную тему" : "Включить светлую тему");
+        };
+
+        setTheme(document.documentElement.dataset.theme || "dark");
+        themeToggle.addEventListener("click", function () {
+            setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+        });
+    }
+
     const backButton = document.querySelector("[data-back-button]");
     if (backButton) {
         backButton.addEventListener("click", function () {
