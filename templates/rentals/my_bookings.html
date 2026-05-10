@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Мои заказы{% endblock %}
+{% block title %}Мои брони{% endblock %}
 {% block content %}
 <div class="page-header compact-header">
-    <h1>Мои заказы</h1>
+    <h1>Мои брони</h1>
 </div>
 
 <div class="card-list">
@@ -21,7 +21,7 @@
         </article>
     {% empty %}
         <section class="card empty-state">
-            <strong>У вас пока нет заказов</strong>
+            <strong>У вас пока нет броней</strong>
             <p>Забронируйте велосипед в каталоге, а затем отслеживайте статус здесь.</p>
             <a href="/catalog/" class="btn btn-primary btn-sm">Открыть каталог</a>
         </section>

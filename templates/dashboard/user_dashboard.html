@@ -46,14 +46,14 @@
 
 <section class="stats-grid stats-grid-single">
     <div class="stat-card">
-        <span>Заказы</span>
+        <span>Брони</span>
         <strong>{{ bookings|length }}</strong>
     </div>
 </section>
 
 <section class="card compact-card">
     <div class="section-head">
-        <h3>Мои заказы</h3>
+        <h3>Мои брони</h3>
         <a class="btn btn-secondary btn-sm" href="/rentals/book/">Все</a>
     </div>
 
@@ -70,7 +70,7 @@
         </div>
     {% empty %}
         <div class="empty-state">
-            <strong>Заказов пока нет</strong>
+            <strong>Броней пока нет</strong>
             <p>Выберите велосипед в каталоге, и последние брони появятся здесь.</p>
             <a href="/catalog/" class="btn btn-primary btn-sm">Открыть каталог</a>
         </div>

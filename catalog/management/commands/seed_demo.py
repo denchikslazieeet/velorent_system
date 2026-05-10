@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from html import escape
 
@@ -8,7 +9,8 @@ from django.utils import timezone
 
 from accounts.models import User
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
-from rentals.models import Booking
+from rentals.models import Booking, Payment, Rental
+from rentals.services import calculate_booking_quote
 
 
 CUSTOMER_PASSWORD = "Mechabear1001"
@@ -24,7 +26,7 @@ CUSTOMERS = [
     ("customer07", "Ксения", "Орлова", "79963214598", "ksenia.orlova@example.com", "@ksenia_o", "6158"),
     ("customer08", "Роман", "Егоров", "79967520844", "roman.egorov@example.com", "@roman_e", "4306"),
     ("customer09", "Полина", "Федорова", "79968931472", "polina.fedorova@example.com", "@polina_f", "8523"),
-    ("customer10", "Максим", "Волков", "79964490267", "maxim.volkov@example.com", "@max_volkov", "1975"),
+    ("customer10", "Максим", "Волков", "79964490267", "", "@max_volkov", "1975"),
 ]
 
 
@@ -158,6 +160,18 @@ BIKES = [
 ]
 
 
+DEMO_BOOKING_NUMBERS = [
+    "VR-9001",
+    "VR-9002",
+    "VR-9003",
+    "VR-9004",
+    "VR-9005",
+    "VR-9006",
+    "VR-9007",
+    "VR-9008",
+]
+
+
 def build_bike_svg(title, color, accent):
     title = escape(title)
     color = escape(color)
@@ -200,8 +214,101 @@ def build_bike_svg(title, color, accent):
 """
 
 
+def create_demo_booking(number, customer, bike, location, start_at, end_at, status, operator):
+    quoted_price, deposit_amount = calculate_booking_quote(start_at, end_at, bike.tariff, customer=customer)
+    booking = Booking.objects.create(
+        number=number,
+        customer=customer,
+        bike=bike,
+        pickup_location=location,
+        tariff=bike.tariff,
+        start_at=start_at,
+        end_at=end_at,
+        quoted_price=quoted_price,
+        deposit_amount=deposit_amount,
+        status=status,
+    )
+
+    rental_status = Rental.Status.READY
+    rental_kwargs = {}
+
+    if status == Booking.Status.ACTIVE:
+        rental_status = Rental.Status.ACTIVE
+        rental_kwargs = {
+            "issued_by": operator,
+            "actual_start_at": start_at,
+            "start_condition": "Велосипед выдан в исправном состоянии.",
+        }
+        bike.status = Bike.Status.IN_RENT
+    elif status == Booking.Status.COMPLETED:
+        rental_status = Rental.Status.COMPLETED
+        final_price = quoted_price
+        if number == "VR-9006":
+            final_price += bike.tariff.late_fee_per_hour
+        rental_kwargs = {
+            "issued_by": operator,
+            "received_by": operator,
+            "actual_start_at": start_at,
+            "actual_end_at": end_at,
+            "start_condition": "Велосипед выдан без замечаний.",
+            "end_condition": "Велосипед возвращен, состояние проверено.",
+            "late_fee": bike.tariff.late_fee_per_hour if number == "VR-9006" else Decimal("0.00"),
+            "final_price": final_price,
+        }
+        bike.status = Bike.Status.AVAILABLE
+    elif status == Booking.Status.CONFIRMED:
+        bike.status = Bike.Status.RESERVED
+    elif status in {Booking.Status.CANCELLED, Booking.Status.EXPIRED}:
+        rental_status = Rental.Status.CANCELLED
+        bike.status = Bike.Status.AVAILABLE
+    else:
+        bike.status = Bike.Status.AVAILABLE
+
+    bike.save(update_fields=["status"])
+    rental = Rental.objects.create(booking=booking, status=rental_status, **rental_kwargs)
+
+    if status == Booking.Status.ACTIVE:
+        Payment.objects.create(
+            booking=booking,
+            amount=deposit_amount,
+            kind=Payment.Kind.DEPOSIT,
+            method=Payment.Method.CARD,
+            status=Payment.Status.PAID,
+            external_id=f"demo-{number}-deposit",
+        )
+
+    if status == Booking.Status.COMPLETED:
+        Payment.objects.create(
+            booking=booking,
+            amount=deposit_amount,
+            kind=Payment.Kind.DEPOSIT,
+            method=Payment.Method.CARD,
+            status=Payment.Status.PAID,
+            external_id=f"demo-{number}-deposit",
+        )
+        Payment.objects.create(
+            booking=booking,
+            amount=rental.final_price,
+            kind=Payment.Kind.RENTAL,
+            method=Payment.Method.CARD,
+            status=Payment.Status.PENDING if number == "VR-9006" else Payment.Status.PAID,
+            external_id=f"demo-{number}-rental",
+        )
+        if number != "VR-9006":
+            Payment.objects.create(
+                booking=booking,
+                amount=deposit_amount,
+                kind=Payment.Kind.REFUND,
+                method=Payment.Method.CARD,
+                status=Payment.Status.PAID,
+                external_id=f"demo-{number}-refund",
+            )
+
+    return booking
+
+
 class Command(BaseCommand):
-    help = "Создает красивое наполнение ВелоРент: клиентов, тарифы, точку выдачи и велосипеды."
+    help = "Создает презентационное наполнение ВелоРент: клиентов, велосипеды, брони, аренды и платежи."
 
     def handle(self, *args, **options):
         operator, _ = User.objects.update_or_create(
@@ -220,6 +327,7 @@ class Command(BaseCommand):
 
         now = timezone.now()
         for username, first_name, last_name, phone, email, telegram, document_last4 in CUSTOMERS:
+            is_verified = username != "customer04"
             user, _ = User.objects.update_or_create(
                 username=username,
                 defaults={
@@ -233,11 +341,11 @@ class Command(BaseCommand):
                     "terms_accepted_at": now,
                     "personal_data_consent": True,
                     "personal_data_consent_at": now,
-                    "document_verified": True,
-                    "document_type": User.DocumentType.PASSPORT,
-                    "document_last4": document_last4,
-                    "document_verified_at": now,
-                    "document_verified_by": operator,
+                    "document_verified": is_verified,
+                    "document_type": User.DocumentType.PASSPORT if is_verified else "",
+                    "document_last4": document_last4 if is_verified else "",
+                    "document_verified_at": now if is_verified else None,
+                    "document_verified_by": operator if is_verified else None,
                 },
             )
             user.set_password(CUSTOMER_PASSWORD)
@@ -304,6 +412,100 @@ class Command(BaseCommand):
 
         Bike.objects.update(current_location=park_location)
         Booking.objects.update(pickup_location=park_location)
+        Booking.objects.filter(number__in=DEMO_BOOKING_NUMBERS).delete()
+        Bike.objects.filter(serial_number__in=[item["serial"] for item in BIKES]).update(status=Bike.Status.AVAILABLE)
+
+        bikes_by_slug = {bike.slug: bike for bike in Bike.objects.filter(slug__in=[item["slug"] for item in BIKES])}
+        users_by_username = {
+            user.username: user
+            for user in User.objects.filter(username__in=[customer[0] for customer in CUSTOMERS])
+        }
+
+        demo_specs = [
+            (
+                "VR-9001",
+                "customer10",
+                "gorodskoy-briz",
+                now + timedelta(hours=2),
+                now + timedelta(hours=4),
+                Booking.Status.PENDING,
+            ),
+            (
+                "VR-9002",
+                "customer04",
+                "parkovyy-navigator",
+                now + timedelta(hours=1),
+                now + timedelta(hours=5),
+                Booking.Status.CONFIRMED,
+            ),
+            (
+                "VR-9003",
+                "customer02",
+                "bystryy-marshrut",
+                now - timedelta(hours=1),
+                now + timedelta(hours=3),
+                Booking.Status.ACTIVE,
+            ),
+            (
+                "VR-9004",
+                "customer03",
+                "legkiy-temp",
+                now - timedelta(hours=5),
+                now - timedelta(hours=1),
+                Booking.Status.ACTIVE,
+            ),
+            (
+                "VR-9005",
+                "customer05",
+                "lesnaya-tropa",
+                now - timedelta(days=2, hours=4),
+                now - timedelta(days=2),
+                Booking.Status.COMPLETED,
+            ),
+            (
+                "VR-9006",
+                "customer06",
+                "gornyy-rubezh",
+                now - timedelta(days=1, hours=5),
+                now - timedelta(days=1, hours=1),
+                Booking.Status.COMPLETED,
+            ),
+            (
+                "VR-9007",
+                "customer07",
+                "kompaktnyy-luch",
+                now - timedelta(hours=3),
+                now - timedelta(hours=1),
+                Booking.Status.EXPIRED,
+            ),
+            (
+                "VR-9008",
+                "customer08",
+                "myatnyy-kruizer",
+                now + timedelta(days=1, hours=1),
+                now + timedelta(days=1, hours=4),
+                Booking.Status.CONFIRMED,
+            ),
+        ]
+
+        for number, username, bike_slug, start_at, end_at, status in demo_specs:
+            create_demo_booking(
+                number=number,
+                customer=users_by_username[username],
+                bike=bikes_by_slug[bike_slug],
+                location=park_location,
+                start_at=start_at,
+                end_at=end_at,
+                status=status,
+                operator=operator,
+            )
+
+        service_bike = bikes_by_slug.get("elektro-komfort")
+        if service_bike:
+            service_bike.status = Bike.Status.SERVICE
+            service_bike.condition_notes = "Плановая проверка тормозов перед выдачей."
+            service_bike.save(update_fields=["status", "condition_notes"])
+
         demo_bikes = Bike.objects.filter(serial_number__startswith="DEMO-").order_by("serial_number")
         try:
             deleted_demo_bikes, _ = demo_bikes.delete()
@@ -333,7 +535,8 @@ class Command(BaseCommand):
             unused_locations.update(is_active=False)
 
         self.stdout.write(self.style.SUCCESS(
-            f"Готово: добавлено/обновлено {len(CUSTOMERS)} клиентов и {len(BIKES)} велосипедов. "
+            f"Готово: добавлено/обновлено {len(CUSTOMERS)} клиентов, {len(BIKES)} велосипедов "
+            f"и {len(demo_specs)} демонстрационных броней. "
             f"Пароль клиентов: {CUSTOMER_PASSWORD}. Лишних точек выдачи удалено: {deleted_locations}. "
             f"Старых демо-велосипедов удалено: {deleted_demo_bikes}"
         ))
