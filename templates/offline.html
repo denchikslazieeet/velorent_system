@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Нет подключения{% endblock %}
+
+{% block content %}
+<section class="card offline-card">
+    <span class="eyebrow">ВелоРент</span>
+    <h1>Нет подключения</h1>
+    <p>Приложение открыто без интернета. Проверьте соединение и обновите страницу.</p>
+    <div class="hero-actions">
+        <a href="/" class="btn btn-primary">На главную</a>
+        <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Обновить</button>
+    </div>
+</section>
+{% endblock %}

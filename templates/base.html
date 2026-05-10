@@ -12,7 +12,13 @@
         })();
     </script>
     <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260510-5">
+    <link rel="apple-touch-icon" href="/static/img/pwa-icon-192.png">
+    <link rel="manifest" href="{% url 'webmanifest' %}">
+    <meta name="theme-color" content="#0b1220" id="theme-color-meta">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="ВелоРент">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510-6">
 </head>
 <body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% endif %}">
 <header class="site-header">
@@ -96,6 +102,7 @@
     {% block content %}{% endblock %}
 </main>
 
+<button type="button" class="install-app-button" data-install-app hidden>Установить приложение</button>
 <button type="button" class="scroll-top-button" data-scroll-top aria-label="Наверх">↑</button>
 
 <footer class="site-footer">
@@ -136,12 +143,16 @@
 </footer>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const themeColorMeta = document.getElementById("theme-color-meta");
     const themeToggle = document.querySelector("[data-theme-toggle]");
     if (themeToggle) {
         const setTheme = function (theme) {
             document.documentElement.dataset.theme = theme;
             localStorage.setItem("velorent-theme", theme);
             themeToggle.setAttribute("aria-label", theme === "light" ? "Включить темную тему" : "Включить светлую тему");
+            if (themeColorMeta) {
+                themeColorMeta.setAttribute("content", theme === "light" ? "#f8fbff" : "#0b1220");
+            }
         };
 
         setTheme(document.documentElement.dataset.theme || "dark");
@@ -187,6 +198,41 @@ document.addEventListener("DOMContentLoaded", function () {
             element.addEventListener("click", confirmAction);
         }
     });
+});
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+        navigator.serviceWorker.register("{% url 'service-worker' %}");
+    });
+}
+
+let deferredInstallPrompt = null;
+const installAppButton = document.querySelector("[data-install-app]");
+
+window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    if (installAppButton) {
+        installAppButton.hidden = false;
+    }
+});
+
+if (installAppButton) {
+    installAppButton.addEventListener("click", async function () {
+        if (!deferredInstallPrompt) {
+            return;
+        }
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        installAppButton.hidden = true;
+    });
+}
+
+window.addEventListener("appinstalled", function () {
+    if (installAppButton) {
+        installAppButton.hidden = true;
+    }
 });
 </script>
 </body>

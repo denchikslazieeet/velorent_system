@@ -394,6 +394,41 @@ a {
     transform: translateY(0);
 }
 
+.install-app-button {
+    appearance: none;
+    position: fixed;
+    right: 82px;
+    bottom: 24px;
+    z-index: 30;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border: 1px solid rgba(121, 226, 183, 0.28);
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(121, 226, 183, 0.95), rgba(93, 168, 255, 0.95));
+    color: #06111f;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+}
+
+.install-app-button[hidden] {
+    display: none;
+}
+
+.offline-card {
+    max-width: 680px;
+    margin: 8vh auto;
+}
+
+.offline-card h1 {
+    margin: 10px 0;
+}
+
 .hero {
     display: grid;
     grid-template-columns: 1.25fr 0.95fr;
@@ -1289,6 +1324,14 @@ input[type="radio"] {
 
     .price-line strong {
         text-align: left;
+    }
+
+    .install-app-button {
+        right: 80px;
+        bottom: 18px;
+        max-width: calc(100vw - 116px);
+        padding: 0 12px;
+        font-size: 13px;
     }
 }
 .service-form {

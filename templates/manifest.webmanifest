@@ -1,0 +1,39 @@
+{% load static %}
+{
+  "name": "ВелоРент",
+  "short_name": "ВелоРент",
+  "description": "Бронирование велосипедов, личный кабинет клиента и рабочая панель оператора.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "{% static 'img/pwa-icon-192.png' %}",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "{% static 'img/pwa-icon-512.png' %}",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Каталог",
+      "url": "/catalog/",
+      "description": "Выбрать велосипед"
+    },
+    {
+      "name": "Личный кабинет",
+      "url": "/dashboard/",
+      "description": "Открыть свои брони"
+    }
+  ]
+}
