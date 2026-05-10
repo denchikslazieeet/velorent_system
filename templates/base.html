@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ВелоРент{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260510">
 </head>
 <body>
 <header class="site-header">
@@ -25,10 +25,7 @@
 
                 {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
                     <a href="/operator/">Панель</a>
-                    <a href="/operator/bikes/">Велосипеды</a>
-                    <a href="/operator/customers/">Клиенты</a>
                     <a href="/rentals/operator/new/">Создать бронь</a>
-                    <a href="/admin/">Администратор</a>
                 {% endif %}
 
                 <a href="{% url 'notifications' %}" class="notification-nav-link">
@@ -60,7 +57,7 @@
             {% endfor %}
         </div>
     {% endif %}
-    {% if request.resolver_match.url_name != 'home' %}
+    {% if request.resolver_match.url_name != 'home' and request.resolver_match.url_name != 'operator-dashboard' %}
         <div class="page-back-row">
             <button type="button" class="btn btn-secondary btn-sm back-button" data-back-button>Назад</button>
         </div>

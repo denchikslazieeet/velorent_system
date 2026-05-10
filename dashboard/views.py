@@ -63,6 +63,11 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
             start_at__gte=today_start,
             start_at__lt=today_start + timedelta(days=1),
         ).count()
+        context['returns_today'] = Booking.objects.filter(
+            status=Booking.Status.ACTIVE,
+            end_at__gte=today_start,
+            end_at__lt=today_start + timedelta(days=1),
+        ).count()
         context['service_bikes'] = Bike.objects.filter(status=Bike.Status.SERVICE).count()
 
         revenue = (
@@ -140,25 +145,18 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         context['customers_total'] = User.objects.filter(role=User.Role.CUSTOMER).count()
         context['today_important'] = [
             {
-                'label': 'Подтвердить брони',
+                'label': 'Новые брони',
                 'value': context['pending_bookings'],
                 'note': 'Новые заявки ждут решения оператора.',
                 'url': f"{reverse('operator-dashboard')}?status={Booking.Status.PENDING}",
                 'tone': 'warning',
             },
             {
-                'label': 'Выдачи сегодня',
+                'label': 'Выдать сегодня',
                 'value': context['upcoming_today'],
                 'note': 'Подтвержденные брони с началом сегодня.',
                 'url': f"{reverse('operator-dashboard')}?status={Booking.Status.CONFIRMED}",
                 'tone': 'info',
-            },
-            {
-                'label': 'Велосипеды на обслуживании',
-                'value': context['service_bikes'],
-                'note': 'Проверьте парк перед выдачами.',
-                'url': f"{reverse('operator-bikes')}?status={Bike.Status.SERVICE}",
-                'tone': 'danger',
             },
             {
                 'label': 'Активные аренды',
@@ -166,6 +164,13 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
                 'note': 'Следите за плановыми возвратами.',
                 'url': f"{reverse('operator-dashboard')}?status={Booking.Status.ACTIVE}",
                 'tone': 'info',
+            },
+            {
+                'label': 'Вернуть сегодня',
+                'value': context['returns_today'],
+                'note': 'Аренды с плановым возвратом сегодня.',
+                'url': f"{reverse('operator-dashboard')}?status={Booking.Status.ACTIVE}",
+                'tone': 'warning',
             },
         ]
 

@@ -261,7 +261,7 @@
     <details class="card operator-collapse">
         <summary>Суммы, штрафы и доплаты</summary>
         <div class="detail-grid grid-2">
-            <div>
+            <section>
                 <h3>Из чего сложилась аренда</h3>
                 <div class="price-breakdown">
                     <div class="price-line">
@@ -295,8 +295,9 @@
                         <strong class="amount amount-positive">{{ price_breakdown.quoted_price }} ₽</strong>
                     </div>
                 </div>
-            </div>
-            <div>
+            </section>
+
+            <section>
                 <h3>Залог и доплаты</h3>
                 <div class="list-row">
                     <span>Залог</span>
@@ -307,9 +308,6 @@
                         <span>Итог</span>
                         <strong class="amount amount-positive">{{ booking.rental.final_price }} ₽</strong>
                     </div>
-                {% endif %}
-            </div>
-                {% if booking.rental %}
                     <div class="list-row">
                         <span>Повреждение</span>
                         <strong class="amount {% if booking.rental.damage_fee > 0 %}amount-danger{% else %}amount-muted{% endif %}">{{ booking.rental.damage_fee }} ₽</strong>
@@ -325,7 +323,7 @@
                 {% else %}
                     <p class="muted">Штрафы появятся после возврата велосипеда.</p>
                 {% endif %}
-            </div>
+            </section>
         </div>
     </details>
 
