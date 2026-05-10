@@ -8,31 +8,6 @@
     </div>
 </div>
 
-<section class="operator-action-grid">
-    <a href="/rentals/operator/new/" class="card operator-action-card">
-        <span>Бронь</span>
-        <strong>Создать</strong>
-    </a>
-    <a href="{% url 'operator-bikes' %}" class="card operator-action-card">
-        <span>Парк</span>
-        <strong>Велосипеды</strong>
-    </a>
-    <a href="{% url 'operator-customers' %}" class="card operator-action-card">
-        <span>База</span>
-        <strong>Клиенты</strong>
-    </a>
-    <a href="{% url 'operator-analytics' %}" class="card operator-action-card">
-        <span>Отчеты</span>
-        <strong>Аналитика</strong>
-    </a>
-    {% if request.user.is_staff or request.user.is_superuser or request.user.role == 'admin' %}
-        <a href="/admin/" class="card operator-action-card">
-            <span>Система</span>
-            <strong>Админка</strong>
-        </a>
-    {% endif %}
-</section>
-
 <section class="stats-grid">
     <div class="stat-card">
         <span>Свободные велосипеды</span>
