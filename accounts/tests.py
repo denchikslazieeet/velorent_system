@@ -193,3 +193,10 @@ class UserNotificationTests(TestCase):
         response = self.client.post(reverse("notifications-read"))
         self.assertRedirects(response, reverse("notifications"))
         self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 0)
+
+    def test_authenticated_pages_are_not_cached(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("notifications"))
+
+        self.assertIn("no-store", response.headers["Cache-Control"])
