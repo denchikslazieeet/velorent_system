@@ -1235,14 +1235,14 @@ input[type="radio"] {
     max-width: 420px;
 }
 
-.bike-status-strip {
+.summary-strip {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 180px));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 220px));
     gap: 10px;
     margin-bottom: 16px;
 }
 
-.bike-status-item {
+.summary-strip-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1255,12 +1255,12 @@ input[type="radio"] {
     box-shadow: var(--shadow);
 }
 
-.bike-status-item span {
+.summary-strip-item span {
     color: var(--muted);
     font-size: 14px;
 }
 
-.bike-status-item strong {
+.summary-strip-item strong {
     font-size: 22px;
 }
 
@@ -1395,7 +1395,7 @@ input[type="radio"] {
         box-shadow: inset 0 -3px 0 var(--accent);
     }
 
-    .bike-status-strip {
+    .summary-strip {
         grid-template-columns: 1fr;
     }
 
