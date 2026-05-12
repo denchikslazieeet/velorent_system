@@ -299,6 +299,7 @@ button:disabled,
 }
 
 .page-content {
+    position: relative;
     padding-top: 32px;
     padding-bottom: 34px;
     flex: 1;
@@ -352,9 +353,13 @@ button:disabled,
 }
 
 .page-back-row {
+    position: absolute;
+    top: 32px;
+    right: 0;
+    z-index: 2;
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 18px;
+    margin: 0;
 }
 
 .back-button {
@@ -710,7 +715,12 @@ button:disabled,
 }
 
 .page-header {
+    min-height: 42px;
     margin-bottom: 18px;
+}
+
+.has-page-back .page-header {
+    padding-right: 112px;
 }
 
 .page-header p,
@@ -1396,6 +1406,16 @@ input[type="radio"] {
 
     .price-line strong {
         text-align: left;
+    }
+
+    .page-back-row {
+        position: static;
+        justify-content: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .has-page-back .page-header {
+        padding-right: 0;
     }
 
     .install-app-button {
