@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 132" role="img" aria-label="ВелоРент аренда велосипедов">
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="92" y2="126" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b8fe8"/>
+      <stop offset="1" stop-color="#0067bc"/>
+    </linearGradient>
+    <linearGradient id="green" x1="40" y1="75" x2="94" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84d346"/>
+      <stop offset="1" stop-color="#4cab2f"/>
+    </linearGradient>
+    <linearGradient id="wordBlue" x1="130" y1="42" x2="320" y2="42" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b8fe8"/>
+      <stop offset="1" stop-color="#0067bc"/>
+    </linearGradient>
+    <linearGradient id="wordGreen" x1="321" y1="42" x2="500" y2="42" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84d346"/>
+      <stop offset="1" stop-color="#4cab2f"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(3 4)">
+    <ellipse cx="54" cy="120" rx="32" ry="5" fill="#0b1220" opacity=".16"/>
+    <path d="M54 0C29 0 9 20 9 45c0 35 45 71 45 71s45-36 45-71C99 20 79 0 54 0Z" fill="url(#blue)"/>
+    <circle cx="54" cy="45" r="35" fill="#ffffff"/>
+
+    <path d="M22 72h9V59h11v20h10V49h8v30h10V65h12v18H22Z" fill="url(#green)"/>
+    <path d="M33 88c13-9 27-9 43 0 4 3 8 5 12 5-10 9-21 15-34 20-6-9-13-17-21-25Z" fill="#ffffff"/>
+    <path d="M46 86c14-7 26-5 38 7-9 8-19 15-31 20-2-8-4-17-7-27Z" fill="url(#green)"/>
+
+    <circle cx="33" cy="53" r="12" fill="none" stroke="#0a78c8" stroke-width="7"/>
+    <circle cx="74" cy="53" r="12" fill="none" stroke="#0a78c8" stroke-width="7"/>
+    <path d="M33 53h16l9-23h13m-22 23 17-1 8-22m-25 0H39m32 0h8" fill="none" stroke="#0a78c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="132" y="70" font-family="Inter, Arial, sans-serif" font-size="50" font-weight="900" letter-spacing="0">
+    <tspan fill="url(#wordBlue)">Вело</tspan><tspan fill="url(#wordGreen)">Рент</tspan>
+  </text>
+  <text x="134" y="105" fill="#8a94a6" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500" letter-spacing="8">аренда велосипедов</text>
+</svg>

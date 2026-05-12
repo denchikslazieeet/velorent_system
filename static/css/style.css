@@ -157,26 +157,16 @@ button:disabled,
 .brand {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 800;
-    font-size: 22px;
-    letter-spacing: 0;
+    min-width: 0;
 }
 
-.brand-mark {
-    width: 34px;
-    height: 34px;
-    display: inline-grid;
-    place-items: center;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: #06111f;
-    font-size: 13px;
-    font-weight: 900;
-    line-height: 1;
+.brand-logo {
+    display: block;
+    width: 178px;
+    height: auto;
+    max-height: 54px;
 }
 
-:root[data-theme="light"] .brand-mark,
 :root[data-theme="light"] .btn-primary,
 :root[data-theme="light"] .scroll-top-button,
 :root[data-theme="light"] .quick-filter-active,
@@ -1334,6 +1324,10 @@ input[type="radio"] {
         flex-direction: column;
         align-items: flex-start;
         padding: 16px 0;
+    }
+
+    .brand-logo {
+        width: 158px;
     }
 
     .operator-sidebar {

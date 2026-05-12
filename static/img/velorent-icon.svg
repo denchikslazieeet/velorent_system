@@ -1,6 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VeloRent">
-  <rect width="64" height="64" rx="16" fill="#0b1220"/>
-  <path d="M18 43a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm28 0a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" fill="none" stroke="#79e2b7" stroke-width="4"/>
-  <path d="M18 34h10l7-14h6m-13 14 10 0 8 0m-18 0-5-12h-5" fill="none" stroke="#5da8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M39 20h8" stroke="#eef4ff" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112" role="img" aria-label="ВелоРент">
+  <defs>
+    <linearGradient id="pinBlue" x1="12" y1="8" x2="76" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b8fe8"/>
+      <stop offset="1" stop-color="#0067bc"/>
+    </linearGradient>
+    <linearGradient id="green" x1="30" y1="68" x2="82" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84d346"/>
+      <stop offset="1" stop-color="#4cab2f"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="48" cy="105" rx="27" ry="5" fill="#0b1220" opacity=".14"/>
+  <path d="M48 5C26 5 8 23 8 45c0 31 40 61 40 61s40-30 40-61C88 23 70 5 48 5Z" fill="url(#pinBlue)"/>
+  <circle cx="48" cy="45" r="31" fill="#ffffff"/>
+
+  <path d="M20 71h8V59h10v18h9V51h7v26h9V64h10v16H20Z" fill="url(#green)"/>
+  <path d="M30 85c11-8 22-8 36 0 4 2 7 4 10 4-9 8-18 13-28 17-6-8-12-14-18-21Z" fill="#ffffff"/>
+  <path d="M42 83c12-6 22-4 32 6-7 6-15 12-26 17-2-7-4-14-6-23Z" fill="url(#green)"/>
+
+  <circle cx="29" cy="52" r="10" fill="none" stroke="#0a78c8" stroke-width="6"/>
+  <circle cx="66" cy="52" r="10" fill="none" stroke="#0a78c8" stroke-width="6"/>
+  <path d="M29 52h14l8-20h12m-20 20 15-1 8-19m-23 0h-9m29 0h7" fill="none" stroke="#0a78c8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
