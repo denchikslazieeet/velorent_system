@@ -5,28 +5,8 @@
 <div class="page-header compact-header">
     <div class="section-head">
         <h1>Панель оператора</h1>
-        <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
     </div>
 </div>
-
-<section class="operator-action-grid">
-    <a href="/rentals/operator/new/" class="card operator-action-card">
-        <span>Быстрое действие</span>
-        <strong>Создать бронь</strong>
-    </a>
-    <a href="{% url 'operator-customers' %}" class="card operator-action-card">
-        <span>Справочник</span>
-        <strong>Клиенты</strong>
-    </a>
-    <a href="{% url 'operator-bikes' %}" class="card operator-action-card">
-        <span>{{ available_bikes }} свободно</span>
-        <strong>Велосипеды</strong>
-    </a>
-    <a href="{% url 'operator-analytics' %}" class="card operator-action-card">
-        <span>Отчеты и выручка</span>
-        <strong>Аналитика</strong>
-    </a>
-</section>
 
 <section class="card compact-card priority-card" style="margin-bottom: 20px;">
     <div class="section-head">
@@ -46,8 +26,11 @@
     </div>
 </section>
 
-<section class="card operator-filter-card" style="margin-bottom: 20px;">
-    <h3>Рабочий список</h3>
+<section id="bookings-list" class="card operator-bookings-card" style="margin-bottom: 20px;">
+    <div class="section-head">
+        <h3>Бронирования</h3>
+    </div>
+
     <div class="quick-filter-row">
         {% for filter in quick_filters %}
             <a href="{{ filter.url }}" class="quick-filter {% if current_quick == filter.key %}quick-filter-active{% endif %}">
@@ -84,10 +67,6 @@
             <a href="{% url 'operator-dashboard' %}#bookings-list" class="btn btn-secondary btn-sm">Сбросить</a>
         {% endif %}
     </form>
-</section>
-
-<details id="bookings-list" class="card operator-collapse" open style="margin-bottom: 20px;">
-    <summary>Бронирования</summary>
 
     <div style="margin-top: 18px;">
         <table class="table">
@@ -181,5 +160,5 @@
             </tbody>
         </table>
     </div>
-</details>
+</section>
 {% endblock %}
