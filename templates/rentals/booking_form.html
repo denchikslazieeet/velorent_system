@@ -4,6 +4,9 @@
 <div class="page-header compact-header">
     <h1>{{ page_title }}</h1>
     <p><strong>{{ bike.title }}</strong> · {{ bike.current_location.name }}</p>
+    <div class="action-group" style="margin-top: 12px;">
+        <a href="{% url 'catalog' %}" class="btn btn-secondary btn-sm">Выбрать другой велосипед</a>
+    </div>
 </div>
 
 {% if request.user.next_booking_hourly_surcharge > 0 %}
@@ -24,6 +27,24 @@
                 <div class="field-error">{{ error }}</div>
             {% endfor %}
         </div>
+    {% endif %}
+
+    {% if alternative_bikes %}
+        <section class="alternative-bikes">
+            <h3>Свободные на это время</h3>
+            <div class="alternative-bike-grid">
+                {% for alternative in alternative_bikes %}
+                    <a href="{{ alternative.booking_url }}" class="alternative-bike-card">
+                        {% if alternative.photo %}
+                            <img src="{{ alternative.photo.url }}" alt="{{ alternative.title }}">
+                        {% endif %}
+                        <span>{{ alternative.category.name }}</span>
+                        <strong>{{ alternative.title }}</strong>
+                        <small>{{ alternative.tariff.hourly_rate }} ₽/час · {{ alternative.current_location.name }}</small>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
     {% endif %}
 
     <section class="form-section">

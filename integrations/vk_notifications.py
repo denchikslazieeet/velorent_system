@@ -81,7 +81,9 @@ def build_booking_message(booking, event):
         final_price = getattr(getattr(booking, "rental", None), "final_price", booking.quoted_price)
         return f"Аренда завершена.\n{common}\nИтог к оплате: {final_price} ₽"
     if event == "cancelled":
-        return f"Бронь отменена.\n{common}"
+        reason = getattr(booking, "cancellation_reason", "")
+        reason_line = f"\nПричина: {reason}" if reason else ""
+        return f"Бронь отменена.\n{common}{reason_line}"
     if event == "no_show":
         return f"Бронь отмечена как неявка.\n{common}"
     if event == "payment_paid":

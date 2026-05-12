@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Отмена брони {{ booking.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header compact-header">
+    <h1>Отмена брони {{ booking.number }}</h1>
+    <p>{{ booking.bike.title }} для {{ booking.customer.full_name_or_phone }}</p>
+</div>
+
+<section class="booking-workspace">
+    <form method="post" class="card form-card clean-form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="form-errors">
+                {% for error in form.non_field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <section class="form-section">
+            <h3>Причина для клиента</h3>
+            <div class="form-field">
+                <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+                {{ form.reason }}
+                {% for error in form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.custom_reason.id_for_label }}">{{ form.custom_reason.label }}</label>
+                {{ form.custom_reason }}
+                {% for error in form.custom_reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </section>
+
+        <div class="action-group">
+            <button type="submit" class="btn btn-primary">Отменить и уведомить</button>
+            <a href="{% url 'booking-detail' booking.pk %}" class="btn btn-secondary">Не отменять</a>
+        </div>
+    </form>
+
+    <aside class="card booking-summary">
+        <h3>Бронь</h3>
+        <div class="list-row">
+            <span>Клиент</span>
+            <strong>{{ booking.customer.full_name_or_phone }}</strong>
+        </div>
+        <div class="list-row">
+            <span>Телефон</span>
+            <strong>{{ booking.customer.phone|default:"-" }}</strong>
+        </div>
+        <div class="list-row">
+            <span>Начало</span>
+            <strong>{{ booking.start_at|date:"d.m.Y H:i" }}</strong>
+        </div>
+        <div class="list-row">
+            <span>Возврат</span>
+            <strong>{{ booking.end_at|date:"d.m.Y H:i" }}</strong>
+        </div>
+    </aside>
+</section>
+{% endblock %}

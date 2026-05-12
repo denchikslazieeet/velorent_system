@@ -310,6 +310,7 @@ button:disabled,
 
 .page-content {
     padding-top: 32px;
+    padding-bottom: 34px;
     flex: 1;
 }
 
@@ -934,6 +935,16 @@ input[type="radio"] {
     max-width: 720px;
 }
 
+.auth-page {
+    max-width: 760px;
+    margin-top: -10px;
+    margin-bottom: 40px;
+}
+
+.auth-page .auth-form {
+    max-width: 100%;
+}
+
 .auth-form .btn {
     justify-self: start;
     min-width: 82px;
@@ -943,6 +954,51 @@ input[type="radio"] {
     display: flex;
     align-items: center;
     margin-top: 8px;
+}
+
+.alternative-bikes {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid rgba(93, 168, 255, 0.22);
+    border-radius: 14px;
+    background: var(--input-bg);
+}
+
+.alternative-bikes h3 {
+    margin: 0;
+}
+
+.alternative-bike-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.alternative-bike-card {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+}
+
+.alternative-bike-card:hover {
+    border-color: rgba(93, 168, 255, 0.45);
+    transform: translateY(-1px);
+}
+
+.alternative-bike-card img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.alternative-bike-card span,
+.alternative-bike-card small {
+    color: var(--muted);
 }
 
 .stats-grid {
@@ -2103,6 +2159,7 @@ input[type="radio"] {
     .compact-form,
     .account-code-card,
     .auth-layout,
+    .alternative-bike-grid,
     .operator-action-grid,
     .priority-grid,
     .profile-layout,

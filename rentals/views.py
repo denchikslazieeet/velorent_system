@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from decimal import ROUND_HALF_UP
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -16,7 +17,7 @@ from accounts.models import AccountAccessCode
 from dashboard.mixins import OperatorRequiredMixin
 from integrations.services import queue_booking_sync
 from integrations.vk_notifications import notify_booking_event
-from .forms import BookingForm, OperatorBookingForm
+from .forms import BookingCancelForm, BookingForm, OperatorBookingForm
 from .models import Booking, Rental, Payment, make_booking_number
 
 
@@ -224,11 +225,52 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
         self.bike = get_object_or_404(Bike, slug=kwargs['slug'])
         return super().dispatch(request, *args, **kwargs)
 
+    def get_initial(self):
+        initial = super().get_initial()
+        for field in ("start_at", "duration_hours", "pickup_location"):
+            value = self.request.GET.get(field)
+            if value:
+                initial[field] = value
+        return initial
+
+    def get_alternative_bikes(self, form):
+        start_at = form.cleaned_data.get("start_at")
+        end_at = form.cleaned_data.get("end_at")
+        if not start_at or not end_at:
+            return []
+
+        params = urlencode({
+            "start_at": start_at.strftime("%Y-%m-%dT%H:%M"),
+            "duration_hours": form.cleaned_data.get("duration_hours") or 1,
+            "pickup_location": form.cleaned_data.get("pickup_location").pk if form.cleaned_data.get("pickup_location") else "",
+        })
+
+        alternatives = []
+        bikes = (
+            Bike.objects
+            .filter(status=Bike.Status.AVAILABLE)
+            .exclude(pk=self.bike.pk)
+            .select_related("tariff", "current_location", "category")
+            .order_by("title")[:12]
+        )
+        for bike in bikes:
+            if bike_available_for_period(bike, start_at, end_at):
+                bike.booking_url = f"{reverse('booking-create', kwargs={'slug': bike.slug})}?{params}"
+                alternatives.append(bike)
+            if len(alternatives) >= 4:
+                break
+        return alternatives
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['bike'] = self.bike
         context['page_title'] = 'Бронирование велосипеда'
         return context
+
+    def form_invalid(self, form):
+        context = self.get_context_data(form=form)
+        context["alternative_bikes"] = self.get_alternative_bikes(form) if form.is_bound else []
+        return self.render_to_response(context)
 
     def form_valid(self, form):
         booking = form.save(commit=False)
@@ -708,14 +750,38 @@ class ConfirmRentalPaymentView(LoginRequiredMixin, OperatorRequiredMixin, View):
 
 
 class CancelBookingView(LoginRequiredMixin, View):
-    def post(self, request, pk, *args, **kwargs):
-        booking = get_object_or_404(
+    template_name = 'rentals/cancel_confirm.html'
+
+    def get_booking(self, pk):
+        return get_object_or_404(
             Booking.objects.select_related('bike', 'rental', 'customer'),
             pk=pk
         )
 
+    def user_is_operator(self, user):
+        return user.role in {'operator', 'admin'} or user.is_staff or user.is_superuser
+
+    def get(self, request, pk, *args, **kwargs):
+        booking = self.get_booking(pk)
+        is_operator = self.user_is_operator(request.user)
+
+        if not is_operator:
+            return redirect('booking-detail', pk=booking.pk)
+
+        if booking.status not in {Booking.Status.PENDING, Booking.Status.CONFIRMED}:
+            messages.warning(request, 'Эту бронь уже нельзя отменить.')
+            return redirect('booking-detail', pk=booking.pk)
+
+        return render(request, self.template_name, {
+            "booking": booking,
+            "form": BookingCancelForm(),
+        })
+
+    def post(self, request, pk, *args, **kwargs):
+        booking = self.get_booking(pk)
+
         user = request.user
-        is_operator = user.role in {'operator', 'admin'} or user.is_staff or user.is_superuser
+        is_operator = self.user_is_operator(user)
 
         if not is_operator and booking.customer != user:
             messages.error(request, 'У вас нет доступа к этой брони.')
@@ -725,8 +791,19 @@ class CancelBookingView(LoginRequiredMixin, View):
             messages.warning(request, 'Эту бронь уже нельзя отменить.')
             return redirect('booking-detail', pk=booking.pk)
 
+        cancellation_reason = "Бронь отменена клиентом."
+        if is_operator:
+            form = BookingCancelForm(request.POST)
+            if not form.is_valid():
+                return render(request, self.template_name, {
+                    "booking": booking,
+                    "form": form,
+                })
+            cancellation_reason = form.get_reason_text()
+
         booking.status = Booking.Status.CANCELLED
-        booking.save(update_fields=['status', 'updated_at'])
+        booking.cancellation_reason = cancellation_reason
+        booking.save(update_fields=['status', 'cancellation_reason', 'updated_at'])
 
         if hasattr(booking, 'rental') and booking.rental.status == Rental.Status.READY:
             booking.rental.status = Rental.Status.CANCELLED

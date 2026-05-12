@@ -39,6 +39,10 @@ class BookingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["pickup_location"].queryset = PickupLocation.objects.filter(is_active=True)
+        self.fields["comment"].widget.attrs.setdefault(
+            "placeholder",
+            "Например: нужен шлем, детское кресло или звонок перед выдачей."
+        )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -111,3 +115,45 @@ class OperatorBookingForm(BookingForm):
                 created_by=created_by,
             )
         return customer
+
+
+class BookingCancelForm(forms.Form):
+    REASONS = [
+        ("closed", "Прокат уже закрыт. Создайте бронь на рабочее время."),
+        ("bike_unavailable", "Выбранный велосипед недоступен в это время. Пожалуйста, выберите другой велосипед."),
+        ("weather", "Бронь отменена из-за небезопасных погодных условий."),
+        ("technical", "Велосипед временно недоступен по технической причине."),
+        ("client_request", "Бронь отменена по просьбе клиента."),
+        ("other", "Другая причина"),
+    ]
+
+    reason = forms.ChoiceField(
+        label="Причина отмены",
+        choices=REASONS,
+        widget=forms.Select(attrs={"class": "table-input compact-select"}),
+    )
+    custom_reason = forms.CharField(
+        label="Комментарий",
+        required=False,
+        max_length=255,
+        widget=forms.Textarea(attrs={
+            "rows": 3,
+            "placeholder": "Если выбрали другую причину, напишите короткое объяснение для клиента.",
+        }),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        reason = cleaned_data.get("reason")
+        custom_reason = (cleaned_data.get("custom_reason") or "").strip()
+
+        if reason == "other" and not custom_reason:
+            self.add_error("custom_reason", "Напишите причину отмены.")
+        return cleaned_data
+
+    def get_reason_text(self):
+        reason = self.cleaned_data["reason"]
+        custom_reason = (self.cleaned_data.get("custom_reason") or "").strip()
+        if reason == "other":
+            return custom_reason
+        return dict(self.REASONS).get(reason, "")

@@ -5,7 +5,15 @@ from .models import Booking, Rental, Payment
 class BookingAdmin(admin.ModelAdmin):
     list_display = ("number", "customer", "bike", "start_at", "end_at", "status", "quoted_price")
     list_filter = ("status", "pickup_location")
-    search_fields = ("number", "customer__username", "customer__email", "bike__title")
+    search_fields = (
+        "number",
+        "customer__username",
+        "customer__phone",
+        "customer__email",
+        "bike__title",
+        "comment",
+        "cancellation_reason",
+    )
 
 @admin.register(Rental)
 class RentalAdmin(admin.ModelAdmin):

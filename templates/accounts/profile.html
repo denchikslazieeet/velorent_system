@@ -11,14 +11,14 @@
     </div>
 </div>
 
-{% if not request.user.document_verified %}
+{% if request.user.role == 'customer' and not request.user.document_verified %}
 <section class="card warning-card" style="margin-bottom: 20px;">
     <h3>Вы еще не верифицированы</h3>
     <p>Перед первой выдачей оператор проверит документ на месте. Возьмите с собой паспорт или другой документ, удостоверяющий личность.</p>
 </section>
 {% endif %}
 
-{% if not request.user.email %}
+{% if request.user.role == 'customer' and not request.user.email %}
 <section class="card email-reminder-card" style="margin-bottom: 20px;">
     <div>
         <h3>Email важен для уведомлений</h3>
@@ -89,13 +89,17 @@
         <section class="card compact-card">
             <div class="section-head">
                 <h3>Уведомления</h3>
-                {% if request.user.email %}
+                {% if request.user.role != 'customer' %}
+                    <span class="status-badge status-completed">Рабочий режим</span>
+                {% elif request.user.email %}
                     <span class="status-badge status-completed">Email подключен</span>
                 {% else %}
                     <span class="status-badge status-pending">Email не указан</span>
                 {% endif %}
             </div>
-            {% if request.user.email %}
+            {% if request.user.role != 'customer' %}
+                <p class="muted">Служебные события приходят в раздел уведомлений оператора.</p>
+            {% elif request.user.email %}
                 <p class="muted">Важные события по броням будут приходить на {{ request.user.email }} и в раздел уведомлений.</p>
             {% else %}
                 <p class="muted">Пока уведомления сохраняются только на сайте. Добавьте email в форме слева.</p>

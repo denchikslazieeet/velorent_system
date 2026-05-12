@@ -26,6 +26,7 @@ class Booking(models.Model):
     start_at = models.DateTimeField("Начало аренды")
     end_at = models.DateTimeField("Плановый возврат")
     comment = models.TextField("Комментарий клиента", blank=True)
+    cancellation_reason = models.CharField("Причина отмены", max_length=255, blank=True)
     quoted_price = models.DecimalField("Предварительная стоимость", max_digits=10, decimal_places=2, default=0)
     deposit_amount = models.DecimalField("Залог", max_digits=10, decimal_places=2, default=0)
     status = models.CharField("Статус", max_length=20, choices=Status.choices, default=Status.PENDING)

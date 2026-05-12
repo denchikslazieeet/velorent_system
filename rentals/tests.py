@@ -1,6 +1,8 @@
 from decimal import Decimal
 from datetime import timedelta
+from django.core import mail
 from django.test import TestCase
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -113,3 +115,46 @@ class BookingServiceTests(TestCase):
 
         self.assertContains(response, "Квитанция по аренде")
         self.assertContains(response, "Печать")
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        SITE_URL="http://127.0.0.1:8000",
+        VK_GROUP_TOKEN="",
+    )
+    def test_operator_cancel_reason_is_saved_and_emailed(self):
+        customer = User.objects.create_user(
+            username="customer",
+            phone="79960000002",
+            email="customer@example.com",
+            password="12345678",
+        )
+        operator = User.objects.create_user(
+            username="operator",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2003",
+            customer=customer,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(operator)
+
+        response = self.client.post(reverse("booking-cancel", kwargs={"pk": booking.pk}), {
+            "reason": "closed",
+            "custom_reason": "",
+        })
+
+        booking.refresh_from_db()
+        self.assertRedirects(response, reverse("operator-dashboard"))
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+        self.assertIn("Прокат уже закрыт", booking.cancellation_reason)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Прокат уже закрыт", mail.outbox[0].body)

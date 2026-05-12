@@ -117,10 +117,7 @@
                 {% endif %}
 
                 {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                    <form method="post" action="{% url 'booking-cancel' booking.pk %}" class="inline-form" data-confirm="Отменить бронь {{ booking.number }}?">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-secondary btn-sm">Отменить</button>
-                    </form>
+                    <a href="{% url 'booking-cancel' booking.pk %}" class="btn btn-secondary btn-sm">Отменить</a>
 
                     {% if can_mark_no_show %}
                         <a href="{% url 'booking-no-show-confirm' booking.pk %}" class="btn btn-secondary btn-sm">Неявка</a>
@@ -141,6 +138,13 @@
         </div>
     </section>
 </section>
+
+{% if booking.comment %}
+    <section class="card compact-card" style="margin-bottom: 20px;">
+        <h3>Комментарий клиента</h3>
+        <p>{{ booking.comment }}</p>
+    </section>
+{% endif %}
 
 {% if request.user.role != 'operator' and request.user.role != 'admin' and not request.user.is_staff and not request.user.is_superuser %}
     <section class="card map-card">
