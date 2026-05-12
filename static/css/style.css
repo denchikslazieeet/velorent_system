@@ -300,7 +300,7 @@ button:disabled,
 
 .page-content {
     position: relative;
-    padding-top: 32px;
+    padding-top: 24px;
     padding-bottom: 34px;
     flex: 1;
 }
@@ -354,7 +354,7 @@ button:disabled,
 
 .page-back-row {
     position: absolute;
-    top: 32px;
+    top: 24px;
     right: 0;
     z-index: 2;
     display: flex;
