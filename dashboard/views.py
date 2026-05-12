@@ -116,11 +116,12 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         q = (self.request.GET.get('q') or '').strip()
         status = (self.request.GET.get('status') or '').strip()
         quick = (self.request.GET.get('quick') or '').strip()
+        if not quick and not q and not status:
+            quick = 'work'
 
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         tomorrow_start = today_start + timedelta(days=1)
-        week_start = today_start - timedelta(days=6)
 
         context['available_bikes'] = Bike.objects.filter(status=Bike.Status.AVAILABLE).count()
         context['active_rentals'] = Rental.objects.filter(status=Rental.Status.ACTIVE).count()
@@ -136,42 +137,6 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         ).count()
         context['service_bikes'] = Bike.objects.filter(status=Bike.Status.SERVICE).count()
 
-        revenue = (
-            Payment.objects
-            .filter(
-                status=Payment.Status.PAID,
-                kind__in=[Payment.Kind.RENTAL, Payment.Kind.FINE]
-            )
-            .aggregate(total=Sum('amount'))['total']
-        )
-        context['revenue'] = revenue or 0
-
-        revenue_today = (
-            Payment.objects
-            .filter(
-                status=Payment.Status.PAID,
-                kind__in=[Payment.Kind.RENTAL, Payment.Kind.FINE],
-                created_at__gte=today_start
-            )
-            .aggregate(total=Sum('amount'))['total']
-        )
-        context['revenue_today'] = revenue_today or 0
-
-        revenue_week = (
-            Payment.objects
-            .filter(
-                status=Payment.Status.PAID,
-                kind__in=[Payment.Kind.RENTAL, Payment.Kind.FINE],
-                created_at__gte=week_start
-            )
-            .aggregate(total=Sum('amount'))['total']
-        )
-        context['revenue_week'] = revenue_week or 0
-
-        context['bookings_today'] = Booking.objects.filter(created_at__gte=today_start).count()
-        context['no_shows_total'] = Booking.objects.filter(status=Booking.Status.EXPIRED).count()
-        context['completed_rentals_total'] = Rental.objects.filter(status=Rental.Status.COMPLETED).count()
-
         base_bookings = (
             Booking.objects
             .select_related('bike', 'customer', 'rental')
@@ -179,7 +144,15 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         )
         bookings = base_bookings
 
-        if quick == 'pending':
+        if quick == 'work':
+            bookings = bookings.filter(
+                status__in=[
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                    Booking.Status.ACTIVE,
+                ]
+            )
+        elif quick == 'pending':
             bookings = bookings.filter(status=Booking.Status.PENDING)
         elif quick == 'today':
             bookings = bookings.filter(
@@ -227,12 +200,19 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         context['current_status'] = status
         context['current_quick'] = quick
         context['status_choices'] = Booking.Status.choices
+        work_bookings_count = base_bookings.filter(
+            status__in=[
+                Booking.Status.PENDING,
+                Booking.Status.CONFIRMED,
+                Booking.Status.ACTIVE,
+            ]
+        ).count()
         context['quick_filters'] = [
             {
-                'key': '',
-                'label': 'Все',
-                'count': base_bookings.count(),
-                'url': f"{reverse('operator-dashboard')}#bookings-list",
+                'key': 'work',
+                'label': 'В работе',
+                'count': work_bookings_count,
+                'url': f"{reverse('operator-dashboard')}?quick=work#bookings-list",
             },
             {
                 'key': 'pending',
@@ -258,22 +238,13 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
                 'count': context['returns_today'],
                 'url': f"{reverse('operator-dashboard')}?quick=returns#bookings-list",
             },
+            {
+                'key': 'all',
+                'label': 'Все',
+                'count': base_bookings.count(),
+                'url': f"{reverse('operator-dashboard')}?quick=all#bookings-list",
+            },
         ]
-
-        context['operator_bikes'] = (
-            Bike.objects
-            .select_related('category', 'current_location')
-            .order_by('title')[:12]
-        )
-
-        context['popular_bikes'] = (
-            Booking.objects
-            .values('bike__title')
-            .annotate(total=Count('id'))
-            .order_by('-total', 'bike__title')[:5]
-        )
-
-        context['customers_total'] = User.objects.filter(role=User.Role.CUSTOMER).count()
         context['today_important'] = [
             {
                 'label': 'Новые брони',

@@ -5,40 +5,27 @@
 <div class="page-header compact-header">
     <div class="section-head">
         <h1>Панель оператора</h1>
+        <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
     </div>
 </div>
 
-<section class="stats-grid">
-    <div class="stat-card">
-        <span>Свободные велосипеды</span>
-        <strong>
-            <a href="{% url 'operator-bikes' %}?status=available" class="stat-link">{{ available_bikes }}</a>
-        </strong>
-    </div>
-    <div class="stat-card">
-        <span>Активные аренды</span>
-        <strong>
-            <a href="{% url 'operator-dashboard' %}?quick=active#bookings-list" class="stat-link">{{ active_rentals }}</a>
-        </strong>
-    </div>
-    <div class="stat-card">
-        <span>Ожидают подтверждения</span>
-        <strong>
-            <a href="{% url 'operator-dashboard' %}?quick=pending#bookings-list" class="stat-link">{{ pending_bookings }}</a>
-        </strong>
-    </div>
-    <div class="stat-card">
-        <span>Клиенты</span>
-        <strong>
-            <a href="{% url 'operator-customers' %}" class="stat-link">{{ customers_total }}</a>
-        </strong>
-    </div>
-    <div class="stat-card">
-        <span>Выручка</span>
-        <strong>
-            <a href="{% url 'operator-revenue' %}" class="stat-link">{{ revenue }} ₽</a>
-        </strong>
-    </div>
+<section class="operator-action-grid">
+    <a href="/rentals/operator/new/" class="card operator-action-card">
+        <span>Быстрое действие</span>
+        <strong>Создать бронь</strong>
+    </a>
+    <a href="{% url 'operator-customers' %}" class="card operator-action-card">
+        <span>Справочник</span>
+        <strong>Клиенты</strong>
+    </a>
+    <a href="{% url 'operator-bikes' %}" class="card operator-action-card">
+        <span>{{ available_bikes }} свободно</span>
+        <strong>Велосипеды</strong>
+    </a>
+    <a href="{% url 'operator-analytics' %}" class="card operator-action-card">
+        <span>Отчеты и выручка</span>
+        <strong>Аналитика</strong>
+    </a>
 </section>
 
 <section class="card compact-card priority-card" style="margin-bottom: 20px;">
@@ -46,7 +33,6 @@
         <div>
             <h3>Сегодня важно</h3>
         </div>
-        <a href="{% url 'notifications' %}" class="btn btn-secondary btn-sm">Уведомления</a>
     </div>
 
     <div class="priority-grid">
@@ -60,55 +46,8 @@
     </div>
 </section>
 
-<section class="grid grid-2" style="margin-bottom: 20px;">
-    <section class="card compact-card">
-        <div class="section-head">
-            <h3>Краткая аналитика</h3>
-        </div>
-
-        <div class="list-row">
-            <span>Выручка за сегодня</span>
-            <strong>{{ revenue_today }} ₽</strong>
-        </div>
-        <div class="list-row">
-            <span>Выручка за 7 дней</span>
-            <strong>{{ revenue_week }} ₽</strong>
-        </div>
-        <div class="list-row">
-            <span>Брони за сегодня</span>
-            <strong>{{ bookings_today }}</strong>
-        </div>
-        <div class="list-row">
-            <span>Неявки</span>
-            <strong>{{ no_shows_total }}</strong>
-        </div>
-        <div class="list-row">
-            <span>Завершённые аренды</span>
-            <strong>{{ completed_rentals_total }}</strong>
-        </div>
-    </section>
-
-    <section class="card compact-card">
-        <div class="section-head">
-            <h3>Популярные велосипеды</h3>
-        </div>
-
-        {% for bike in popular_bikes %}
-            <div class="list-row">
-                <span>{{ bike.bike__title }}</span>
-                <strong>{{ bike.total }}</strong>
-            </div>
-        {% empty %}
-            <div class="empty-state empty-state-compact">
-                <strong>Данных пока мало</strong>
-                <p>Когда появятся брони, здесь будет рейтинг велосипедов.</p>
-            </div>
-        {% endfor %}
-    </section>
-</section>
-
 <section class="card operator-filter-card" style="margin-bottom: 20px;">
-    <h3>Поиск и фильтры</h3>
+    <h3>Рабочий список</h3>
     <div class="quick-filter-row">
         {% for filter in quick_filters %}
             <a href="{{ filter.url }}" class="quick-filter {% if current_quick == filter.key %}quick-filter-active{% endif %}">
@@ -243,11 +182,4 @@
         </table>
     </div>
 </details>
-
-<section class="card compact-card">
-    <div class="section-head">
-        <h3>Парк велосипедов</h3>
-        <a href="{% url 'operator-bikes' %}" class="btn btn-primary btn-sm">Открыть</a>
-    </div>
-</section>
 {% endblock %}
