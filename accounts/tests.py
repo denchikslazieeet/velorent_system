@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.core import mail
+from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -57,6 +58,22 @@ class AccountClaimFormTests(TestCase):
 
 
 class UserLoginTests(TestCase):
+    def test_non_blank_phone_is_unique_at_database_level(self):
+        User.objects.create_user(
+            username="customer-one",
+            phone="79961543021",
+            password="Mechabear1001",
+            role=User.Role.CUSTOMER,
+        )
+
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user(
+                username="customer-two",
+                phone="79961543021",
+                password="Mechabear1001",
+                role=User.Role.CUSTOMER,
+            )
+
     def test_customer_can_login_by_phone_even_when_username_is_not_phone(self):
         User.objects.create_user(
             username="customer01",

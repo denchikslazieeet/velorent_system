@@ -77,8 +77,8 @@
             </a>
         </div>
 
-        {% if bike.status == 'available' %}
-            <a href="/rentals/book/{{ bike.slug }}/new/" class="btn btn-primary full">Забронировать</a>
+        {% if bike.status == 'available' or bike.status == 'reserved' %}
+            <a href="/rentals/book/{{ bike.slug }}/new/" class="btn btn-primary full">Выбрать время</a>
         {% elif bike.status == 'service' %}
             <div class="card warning-card" style="padding: 16px; margin-top: 14px;">
                 <p style="margin: 0;">Велосипед находится на обслуживании и сейчас недоступен для бронирования.</p>

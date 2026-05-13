@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 
@@ -86,6 +87,17 @@ class User(AbstractUser):
         self.personal_data_consent = True
         self.terms_accepted_at = now
         self.personal_data_consent_at = now
+
+    class Meta:
+        verbose_name = "user"
+        verbose_name_plural = "users"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["phone"],
+                condition=~Q(phone=""),
+                name="unique_non_blank_user_phone",
+            )
+        ]
 
 
 class AccountAccessCode(models.Model):

@@ -1,3 +1,6 @@
+from decimal import Decimal, InvalidOperation
+
+from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -5,7 +8,7 @@ from rest_framework.response import Response
 
 from catalog.models import Bike, Tariff, PickupLocation
 from rentals.models import Booking, Rental, Payment, make_booking_number
-from rentals.services import bike_available_for_period, calculate_booking_quote
+from rentals.services import bike_available_for_period, calculate_booking_quote, compute_late_fee
 from integrations.services import queue_booking_sync
 from integrations.vk_notifications import notify_booking_event
 from .permissions import IsOperator
@@ -17,6 +20,25 @@ from .serializers import (
     PickupLocationSerializer,
     RentalSerializer,
 )
+
+
+def error_response(message, response_status=status.HTTP_400_BAD_REQUEST):
+    return Response({"detail": message}, status=response_status)
+
+
+def parse_money(value, default="0"):
+    try:
+        amount = Decimal(str(value if value not in (None, "") else default))
+    except (InvalidOperation, TypeError):
+        amount = Decimal(default)
+    return max(amount, Decimal("0"))
+
+
+def normalize_payment_method(value):
+    if value in {Payment.Method.CASH, Payment.Method.CARD, Payment.Method.ONLINE}:
+        return value
+    return Payment.Method.CARD
+
 
 class BikeViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Bike.objects.select_related("tariff", "current_location").all()
@@ -93,6 +115,26 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     def confirm(self, request, pk=None):
         booking = self.get_object()
+
+        if booking.status != Booking.Status.PENDING:
+            return error_response("Подтвердить можно только новую бронь.")
+
+        if booking.bike.status in {Bike.Status.SERVICE, Bike.Status.RETIRED, Bike.Status.IN_RENT}:
+            return error_response("Велосипед сейчас недоступен для подтверждения брони.")
+
+        conflict_exists = Booking.objects.filter(
+            bike=booking.bike,
+            status__in=[
+                Booking.Status.PENDING,
+                Booking.Status.CONFIRMED,
+                Booking.Status.ACTIVE,
+            ],
+            start_at__lt=booking.end_at,
+            end_at__gt=booking.start_at,
+        ).exclude(pk=booking.pk).exists()
+        if conflict_exists:
+            return error_response("На этот период уже есть другая бронь.")
+
         booking.status = Booking.Status.CONFIRMED
         booking.save(update_fields=["status", "updated_at"])
         booking.bike.status = booking.bike.Status.RESERVED
@@ -104,9 +146,19 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["post"])
     def issue(self, request, pk=None):
         booking = self.get_object()
+
+        if booking.status != Booking.Status.CONFIRMED:
+            return error_response("Выдать можно только подтверждённую бронь.")
+
+        if not booking.customer.document_verified:
+            return error_response("Перед выдачей нужно проверить документ клиента.")
+
         rental = booking.rental
+        if rental.status != Rental.Status.READY:
+            return error_response("Аренда уже была выдана или закрыта.")
+
         rental.status = Rental.Status.ACTIVE
-        rental.actual_start_at = booking.start_at
+        rental.actual_start_at = timezone.now()
         rental.issued_by = request.user
         rental.start_condition = request.data.get("start_condition", "")
         rental.save()
@@ -118,7 +170,7 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
             booking=booking,
             amount=booking.deposit_amount,
             kind=Payment.Kind.DEPOSIT,
-            method=request.data.get("method", Payment.Method.CARD),
+            method=normalize_payment_method(request.data.get("method")),
             status=Payment.Status.PAID,
         )
         queue_booking_sync(booking)
@@ -129,12 +181,22 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
     def complete(self, request, pk=None):
         booking = self.get_object()
         rental = booking.rental
+
+        if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
+            return error_response("Завершить можно только активную аренду.")
+
+        actual_end_at = timezone.now()
+        damage_fee = parse_money(request.data.get("damage_fee"))
+        extra_time_fee = parse_money(request.data.get("extra_time_fee"))
+
         rental.status = Rental.Status.COMPLETED
-        rental.actual_end_at = booking.end_at
+        rental.actual_end_at = actual_end_at
         rental.received_by = request.user
         rental.end_condition = request.data.get("end_condition", "")
-        rental.damage_fee = request.data.get("damage_fee", 0)
-        rental.final_price = booking.quoted_price
+        rental.damage_fee = damage_fee
+        rental.late_fee = compute_late_fee(booking, actual_end_at)
+        rental.extra_time_fee = extra_time_fee
+        rental.final_price = booking.quoted_price + rental.late_fee + rental.damage_fee + rental.extra_time_fee
         rental.save()
         booking.status = Booking.Status.COMPLETED
         booking.save(update_fields=["status", "updated_at"])
@@ -144,7 +206,7 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
             booking=booking,
             amount=rental.final_price,
             kind=Payment.Kind.RENTAL,
-            method=request.data.get("method", Payment.Method.CARD),
+            method=normalize_payment_method(request.data.get("method")),
             status=Payment.Status.PAID,
         )
         if booking.deposit_amount:
@@ -152,7 +214,7 @@ class OperatorActionViewSet(viewsets.GenericViewSet):
                 booking=booking,
                 amount=booking.deposit_amount,
                 kind=Payment.Kind.REFUND,
-                method=request.data.get("method", Payment.Method.CARD),
+                method=normalize_payment_method(request.data.get("method")),
                 status=Payment.Status.PAID,
             )
         queue_booking_sync(booking)

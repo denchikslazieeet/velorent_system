@@ -8,9 +8,9 @@ from django.utils import timezone
 
 from accounts.models import User
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
-from rentals.forms import BookingForm
+from rentals.forms import BookingForm, OperatorBookingForm
 from rentals.models import Booking, Rental, make_booking_number
-from rentals.services import bike_available_for_period, calculate_booking_quote
+from rentals.services import bike_available_for_period, calculate_booking_quote, compute_late_fee
 
 class BookingServiceTests(TestCase):
     def setUp(self):
@@ -54,6 +54,67 @@ class BookingServiceTests(TestCase):
             status=Booking.Status.CONFIRMED,
         )
         self.assertFalse(bike_available_for_period(self.bike, start_at + timedelta(minutes=30), end_at + timedelta(minutes=30)))
+
+    def test_reserved_bike_can_be_booked_for_non_overlapping_period(self):
+        start_at = timezone.now() + timedelta(hours=1)
+        end_at = start_at + timedelta(hours=2)
+        Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=start_at,
+            end_at=end_at,
+            status=Booking.Status.CONFIRMED,
+        )
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        self.assertTrue(
+            bike_available_for_period(
+                self.bike,
+                end_at + timedelta(hours=1),
+                end_at + timedelta(hours=3),
+            )
+        )
+
+    def test_reserved_bike_stays_visible_for_new_period_selection(self):
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        response = self.client.get(reverse("catalog"))
+        operator_form = OperatorBookingForm()
+
+        self.assertContains(response, self.bike.title)
+        self.assertIn(self.bike, operator_form.fields["bike"].queryset)
+
+    def test_quote_rounds_started_hour_up(self):
+        start_at = timezone.now()
+        end_at = start_at + timedelta(hours=1, minutes=1)
+
+        total, _ = calculate_booking_quote(start_at, end_at, self.tariff)
+
+        self.assertEqual(total, Decimal("400.00"))
+
+    def test_late_fee_rounds_started_hour_up(self):
+        start_at = timezone.now() - timedelta(hours=3)
+        end_at = timezone.now() - timedelta(minutes=30)
+        booking = Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=start_at,
+            end_at=end_at,
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+        )
+
+        late_fee = compute_late_fee(booking, timezone.now())
+
+        self.assertEqual(late_fee, Decimal("250.00"))
 
     def test_booking_form_calculates_planned_return_from_hours(self):
         start_at = timezone.localtime(timezone.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M")

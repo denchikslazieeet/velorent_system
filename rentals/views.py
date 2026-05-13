@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from decimal import ROUND_HALF_UP
+from decimal import ROUND_CEILING
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -415,9 +415,9 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
         context['no_show_allowed_at'] = no_show_allowed_at
         context['customer_needs_password'] = not booking.customer.has_usable_password()
 
-        duration_hours = booking.duration_hours().quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        duration_hours = booking.duration_hours().quantize(Decimal("1"), rounding=ROUND_CEILING)
         if duration_hours >= 24 and booking.tariff.daily_rate:
-            billing_units = (duration_hours / Decimal("24")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            billing_units = (duration_hours / Decimal("24")).quantize(Decimal("1"), rounding=ROUND_CEILING)
             base_rate = booking.tariff.daily_rate
             base_label = "сут."
         else:

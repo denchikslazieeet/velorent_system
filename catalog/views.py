@@ -17,7 +17,7 @@ class CatalogListView(ListView):
         qs = (
             Bike.objects
             .select_related("category", "tariff", "current_location")
-            .filter(status=Bike.Status.AVAILABLE)
+            .filter(status__in=[Bike.Status.AVAILABLE, Bike.Status.RESERVED])
         )
         category = self.request.GET.get("category")
         if category:

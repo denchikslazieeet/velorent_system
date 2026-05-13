@@ -71,7 +71,10 @@ class BookingForm(forms.ModelForm):
 class OperatorBookingForm(BookingForm):
     customer_phone = forms.CharField(label="Телефон клиента", max_length=20)
     customer_full_name = forms.CharField(label="ФИО клиента", max_length=255)
-    bike = forms.ModelChoiceField(label="Велосипед", queryset=Bike.objects.filter(status=Bike.Status.AVAILABLE))
+    bike = forms.ModelChoiceField(
+        label="Велосипед",
+        queryset=Bike.objects.filter(status__in=[Bike.Status.AVAILABLE, Bike.Status.RESERVED]),
+    )
 
     class Meta(BookingForm.Meta):
         fields = [
