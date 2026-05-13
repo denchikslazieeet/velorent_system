@@ -305,6 +305,10 @@ button:disabled,
     flex: 1;
 }
 
+.home-page-content {
+    padding-bottom: 0;
+}
+
 .operator-sidebar {
     position: fixed;
     top: 73px;
@@ -1302,6 +1306,8 @@ input[type="radio"] {
 }
 
 .hero-centered {
+    position: relative;
+    overflow: hidden;
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
@@ -1330,6 +1336,56 @@ input[type="radio"] {
 
 .hero-actions-centered {
     justify-content: center;
+}
+
+.home-video-hero {
+    min-height: calc(100vh - 160px);
+    margin: -34px calc(50% - 50vw) 0;
+    padding: 96px max(32px, calc((100vw - 1120px) / 2)) 78px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    isolation: isolate;
+}
+
+.home-video-bg,
+.home-video-overlay {
+    position: absolute;
+    inset: 0;
+}
+
+.home-video-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: -2;
+    background: #07111f;
+}
+
+.home-video-overlay {
+    z-index: -1;
+    background:
+        linear-gradient(180deg, rgba(7, 13, 24, 0.42), rgba(7, 13, 24, 0.72)),
+        radial-gradient(circle at 50% 42%, rgba(11, 18, 32, 0.14), rgba(11, 18, 32, 0.72));
+}
+
+.home-video-hero .hero-main-centered {
+    max-width: 820px;
+    padding: 0;
+}
+
+.home-video-hero .eyebrow {
+    color: #9ee787;
+}
+
+.home-video-hero h1,
+.home-video-hero p {
+    color: #ffffff;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.38);
+}
+
+.home-video-hero p {
+    color: rgba(255, 255, 255, 0.86);
 }
 
 @media (max-width: 900px) {
@@ -1408,6 +1464,12 @@ input[type="radio"] {
 
     .hero {
         min-height: auto;
+    }
+
+    .home-video-hero {
+        min-height: calc(100vh - 92px);
+        margin-top: -24px;
+        padding: 76px 24px 64px;
     }
 
     .hero h1 {

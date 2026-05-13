@@ -1,8 +1,13 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}ВелоРент - велопрокат{% endblock %}
 
 {% block content %}
-<section class="hero hero-centered">
+<section class="hero hero-centered home-video-hero">
+    <video class="home-video-bg" autoplay muted loop playsinline preload="metadata" poster="{% static 'img/velorent-logo.svg' %}">
+        <source src="{% static 'video/home-hero.mp4' %}" type="video/mp4">
+    </video>
+    <div class="home-video-overlay" aria-hidden="true"></div>
     <div class="hero-main hero-main-centered">
         <span class="eyebrow">Прокат велосипедов</span>
         <h1>Арендуй велосипед быстро и удобно</h1>

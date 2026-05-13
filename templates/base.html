@@ -18,7 +18,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ВелоРент">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260513-3">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260513-6">
 </head>
 <body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% endif %}">
 <header class="site-header">
@@ -85,7 +85,7 @@
 </aside>
 {% endif %}
 
-<main class="container page-content{% if request.resolver_match.url_name != 'home' and request.resolver_match.url_name != 'operator-dashboard' %} has-page-back{% endif %}">
+<main class="container page-content{% if request.resolver_match.url_name == 'home' %} home-page-content{% endif %}{% if request.resolver_match.url_name != 'home' and request.resolver_match.url_name != 'operator-dashboard' %} has-page-back{% endif %}">
     {% if messages %}
         <div class="messages">
             {% for message in messages %}
