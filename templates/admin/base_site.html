@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div class="velorent-admin-brand">
+    <img src="{% static 'img/velorent-icon.svg' %}" alt="" class="velorent-admin-logo">
+    <div>
+        <h1 id="site-name">
+            <a href="{% url 'admin:index' %}">ВелоРент</a>
+        </h1>
+        <span>управление прокатом</span>
+    </div>
+</div>
+{% endblock %}

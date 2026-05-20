@@ -1,0 +1,357 @@
+:root {
+    --primary: #7db8ff;
+    --secondary: #79e2b7;
+    --accent: #79e2b7;
+    --primary-fg: #08111f;
+    --body-fg: #e8f0ff;
+    --body-bg: #0b1220;
+    --body-quiet-color: #9fb0c8;
+    --body-loud-color: #ffffff;
+    --header-color: #f8fbff;
+    --header-branding-color: #ffffff;
+    --header-bg: #070d18;
+    --breadcrumbs-bg: #101827;
+    --breadcrumbs-fg: #b8c7df;
+    --link-fg: #9ec8ff;
+    --link-hover-color: #ffffff;
+    --link-selected-fg: #79e2b7;
+    --hairline-color: rgba(125, 184, 255, 0.16);
+    --border-color: rgba(125, 184, 255, 0.22);
+    --error-fg: #ff9aa8;
+    --message-success-bg: rgba(121, 226, 183, 0.14);
+    --message-warning-bg: rgba(255, 193, 7, 0.14);
+    --message-error-bg: rgba(255, 99, 132, 0.14);
+    --darkened-bg: #111b2c;
+    --selected-bg: rgba(125, 184, 255, 0.13);
+    --selected-row: rgba(121, 226, 183, 0.09);
+    --button-bg: #7db8ff;
+    --button-fg: #08111f;
+    --button-hover-bg: #9bcaff;
+    --default-button-bg: #79e2b7;
+    --default-button-hover-bg: #9af0cc;
+    --delete-button-bg: #f0627d;
+    --delete-button-hover-bg: #ff7c93;
+    color-scheme: dark;
+}
+
+html,
+body {
+    background:
+        radial-gradient(circle at top left, rgba(93, 168, 255, 0.14), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(121, 226, 183, 0.08), transparent 32rem),
+        var(--body-bg);
+}
+
+body {
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    font-size: 15px;
+}
+
+a:link,
+a:visited {
+    color: var(--link-fg);
+}
+
+a:hover {
+    color: var(--link-hover-color);
+}
+
+#header {
+    min-height: 70px;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(7, 13, 24, 0.92);
+    backdrop-filter: blur(16px);
+}
+
+.velorent-admin-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.velorent-admin-logo {
+    width: 42px;
+    height: 42px;
+}
+
+.velorent-admin-brand h1 {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.05;
+    font-weight: 900;
+}
+
+.velorent-admin-brand h1 a {
+    color: #ffffff;
+}
+
+.velorent-admin-brand span {
+    display: block;
+    margin-top: 4px;
+    color: #9fb0c8;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+#user-tools {
+    font-size: 13px;
+    letter-spacing: 0;
+}
+
+#user-tools a {
+    border-bottom-color: rgba(158, 200, 255, 0.4);
+}
+
+div.breadcrumbs {
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--hairline-color);
+    background: rgba(16, 24, 39, 0.9);
+    color: var(--breadcrumbs-fg);
+}
+
+#content {
+    padding: 28px;
+}
+
+#content h1 {
+    margin: 0 0 22px;
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 900;
+}
+
+.module,
+.inline-group,
+div.form-row,
+.submit-row,
+#changelist,
+#changelist-filter,
+.paginator,
+.object-tools a,
+.messagelist li {
+    border-radius: 16px;
+}
+
+.module,
+.inline-group,
+#changelist,
+#changelist-filter {
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: rgba(17, 27, 44, 0.9);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+    padding: 15px 18px;
+    background: linear-gradient(90deg, rgba(125, 184, 255, 0.16), rgba(121, 226, 183, 0.08));
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.dashboard .module table th,
+.dashboard .module table td {
+    padding: 13px 16px;
+}
+
+.dashboard .module table tr {
+    border-bottom: 1px solid var(--hairline-color);
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th,
+tfoot td {
+    background: #101827;
+    color: #dce8ff;
+}
+
+td,
+th {
+    border-bottom-color: var(--hairline-color);
+}
+
+tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.018);
+}
+
+tbody tr:hover {
+    background: rgba(125, 184, 255, 0.08);
+}
+
+.row1,
+.row2 {
+    background: transparent;
+}
+
+#changelist table thead th {
+    padding: 12px 10px;
+}
+
+#changelist table tbody td,
+#changelist table tbody th {
+    padding: 12px 10px;
+}
+
+#changelist-filter {
+    padding-bottom: 14px;
+    background: rgba(17, 27, 44, 0.96);
+}
+
+#changelist-filter h2 {
+    padding: 15px 18px;
+    background: linear-gradient(90deg, rgba(125, 184, 255, 0.16), rgba(121, 226, 183, 0.08));
+    color: #ffffff;
+}
+
+#changelist-filter h3 {
+    color: #ffffff;
+}
+
+#toolbar,
+#changelist .actions {
+    border-color: var(--hairline-color);
+    background: rgba(11, 18, 32, 0.7);
+}
+
+input,
+textarea,
+select,
+.vTextField {
+    min-height: 38px;
+    border: 1px solid rgba(125, 184, 255, 0.2);
+    border-radius: 10px;
+    background: #172235;
+    color: #ffffff;
+}
+
+textarea {
+    min-height: 120px;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.vTextField:focus {
+    border-color: rgba(125, 184, 255, 0.72);
+    box-shadow: 0 0 0 3px rgba(125, 184, 255, 0.16);
+    outline: none;
+}
+
+.form-row {
+    border-bottom-color: var(--hairline-color);
+}
+
+.aligned label {
+    color: #d8e6fb;
+}
+
+.help,
+p.help,
+form p.help,
+div.help,
+form div.help,
+div.help li {
+    color: #93a6bf;
+}
+
+.submit-row {
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    background: rgba(17, 27, 44, 0.96);
+}
+
+.button,
+input[type=submit],
+input[type=button],
+.submit-row input,
+a.button {
+    min-height: 38px;
+    padding: 9px 15px;
+    border: 0;
+    border-radius: 10px;
+    font-weight: 800;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button:hover,
+input[type=submit]:hover,
+input[type=button]:hover,
+.submit-row input:hover,
+a.button:hover {
+    transform: translateY(-1px);
+}
+
+.object-tools a:link,
+.object-tools a:visited {
+    border: 1px solid rgba(125, 184, 255, 0.28);
+    background: rgba(125, 184, 255, 0.16);
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.object-tools a:hover {
+    background: rgba(125, 184, 255, 0.28);
+}
+
+.messagelist {
+    padding: 0;
+}
+
+.messagelist li {
+    margin-bottom: 10px;
+    border: 1px solid rgba(121, 226, 183, 0.26);
+    background-color: rgba(121, 226, 183, 0.12);
+    color: #e8fff5;
+}
+
+.errornote,
+ul.errorlist {
+    border-radius: 12px;
+}
+
+.login #container {
+    overflow: hidden;
+    width: min(440px, calc(100% - 32px));
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: rgba(17, 27, 44, 0.94);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+
+.login #header {
+    justify-content: center;
+    padding: 24px;
+}
+
+.login #content {
+    padding: 26px;
+}
+
+.login .form-row {
+    padding: 0 0 16px;
+}
+
+.login .submit-row {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+@media (max-width: 1024px) {
+    #content {
+        padding: 20px 16px;
+    }
+
+    #header {
+        padding: 0 16px;
+    }
+}

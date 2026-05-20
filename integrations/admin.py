@@ -5,3 +5,5 @@ from .models import SyncEvent
 class SyncEventAdmin(admin.ModelAdmin):
     list_display = ("entity", "entity_id", "event_type", "direction", "status", "created_at")
     list_filter = ("direction", "status", "event_type")
+    search_fields = ("entity", "entity_id", "event_type", "payload", "error_message")
+    readonly_fields = ("created_at",)

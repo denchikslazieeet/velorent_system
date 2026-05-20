@@ -5,6 +5,10 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 from dashboard.views import HomePageView
 
+admin.site.site_header = "ВелоРент"
+admin.site.site_title = "ВелоРент"
+admin.site.index_title = "Администрирование проката"
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("manifest.webmanifest", TemplateView.as_view(
