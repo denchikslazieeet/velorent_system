@@ -28,6 +28,7 @@ class User(AbstractUser):
     vk_screen_name = models.CharField("VK короткое имя", max_length=120, blank=True)
     vk_photo_url = models.URLField("VK фото", blank=True)
     vk_notifications_enabled = models.BooleanField("Уведомления VK включены", default=True)
+    email_verified_at = models.DateTimeField("Email подтвержден", null=True, blank=True)
 
     next_booking_hourly_surcharge = models.DecimalField(
         "Надбавка на следующее бронирование (₽/час)",
@@ -87,6 +88,10 @@ class User(AbstractUser):
         self.personal_data_consent = True
         self.terms_accepted_at = now
         self.personal_data_consent_at = now
+
+    @property
+    def email_is_verified(self):
+        return bool(self.email and self.email_verified_at)
 
     class Meta:
         verbose_name = "user"
@@ -157,6 +162,58 @@ class AccountAccessCode(models.Model):
             expires_at=now + timedelta(minutes=settings.ACCOUNT_ACCESS_CODE_TTL_MINUTES),
         )
         return access_code, raw_code
+
+
+class EmailVerificationCode(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_verification_codes",
+        verbose_name="Пользователь",
+    )
+    email = models.EmailField("Email")
+    code_hash = models.CharField("Hash кода", max_length=128)
+    expires_at = models.DateTimeField("Действует до")
+    used_at = models.DateTimeField("Использован", null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField("Попытки", default=0)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Код подтверждения email"
+        verbose_name_plural = "Коды подтверждения email"
+
+    def __str__(self):
+        return f"{self.user} / {self.email}"
+
+    @property
+    def is_active(self):
+        return (
+            self.used_at is None
+            and self.expires_at >= timezone.now()
+            and self.attempts < settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS
+        )
+
+    def check_code(self, raw_code):
+        return check_password(raw_code, self.code_hash)
+
+    def mark_used(self):
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
+    @classmethod
+    def create_for_user(cls, user, email):
+        now = timezone.now()
+        cls.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+
+        raw_code = f"{secrets.randbelow(1000000):06d}"
+        verification_code = cls.objects.create(
+            user=user,
+            email=email,
+            code_hash=make_password(raw_code),
+            expires_at=now + timedelta(minutes=settings.EMAIL_VERIFICATION_CODE_TTL_MINUTES),
+        )
+        return verification_code, raw_code
 
 
 class UserNotification(models.Model):

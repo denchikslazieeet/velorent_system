@@ -77,6 +77,8 @@ def build_booking_message(booking, event):
         return f"Ваша бронь подтверждена.\n{common}"
     if event == "issued":
         return f"Велосипед выдан.\n{common}"
+    if event == "extended":
+        return f"Аренда продлена.\n{common}\nНовый плановый возврат: {timezone.localtime(booking.end_at):%d.%m.%Y %H:%M}"
     if event == "completed":
         final_price = getattr(getattr(booking, "rental", None), "final_price", booking.quoted_price)
         return f"Аренда завершена.\n{common}\nИтог к оплате: {final_price} ₽"
@@ -96,6 +98,7 @@ def build_booking_title(booking, event):
         "created": f"Бронь {booking.number} создана",
         "confirmed": f"Бронь {booking.number} подтверждена",
         "issued": f"Велосипед выдан по брони {booking.number}",
+        "extended": f"Аренда {booking.number} продлена",
         "completed": f"Аренда {booking.number} завершена",
         "cancelled": f"Бронь {booking.number} отменена",
         "no_show": f"Неявка по брони {booking.number}",
@@ -106,7 +109,7 @@ def build_booking_title(booking, event):
 
 def create_site_notification(booking, event, title, message):
     level = UserNotification.Level.INFO
-    if event in {"created", "confirmed", "issued", "completed", "payment_paid"}:
+    if event in {"created", "confirmed", "issued", "extended", "completed", "payment_paid"}:
         level = UserNotification.Level.SUCCESS
     if event in {"cancelled", "no_show"}:
         level = UserNotification.Level.WARNING
@@ -150,7 +153,7 @@ def create_operator_booking_notifications(booking):
 
 
 def send_booking_email(booking, title, message):
-    if not booking.customer.email:
+    if not booking.customer.email_is_verified:
         return False
 
     email_body = (

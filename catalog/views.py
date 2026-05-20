@@ -6,6 +6,24 @@ from django.views.generic import ListView, DetailView
 
 from dashboard.mixins import OperatorRequiredMixin
 from .models import Bike
+from rentals.services import bike_reservation_booking
+
+
+def attach_availability_info(bike):
+    bike.next_available_at = None
+    bike.reservation_start_at = None
+    bike.availability_text = ""
+    if bike.status != Bike.Status.RESERVED:
+        return bike
+
+    reservation = bike_reservation_booking(bike)
+    if reservation:
+        bike.reservation_start_at = reservation.start_at
+        bike.next_available_at = reservation.end_at
+        bike.availability_text = "Свободен после"
+    else:
+        bike.availability_text = "Период брони не найден"
+    return bike
 
 
 class CatalogListView(ListView):
@@ -24,12 +42,27 @@ class CatalogListView(ListView):
             qs = qs.filter(category__name__icontains=category)
         return qs
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        for bike in context["bikes"]:
+            attach_availability_info(bike)
+        return context
+
 
 class BikeDetailView(DetailView):
     model = Bike
     template_name = "catalog/bike_detail.html"
     context_object_name = "bike"
     slug_field = "slug"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bike = self.object
+        attach_availability_info(bike)
+        context["reservation_start_at"] = bike.reservation_start_at
+        context["next_available_at"] = bike.next_available_at
+        context["availability_text"] = bike.availability_text
+        return context
 
 
 class SendBikeToServiceView(LoginRequiredMixin, OperatorRequiredMixin, View):

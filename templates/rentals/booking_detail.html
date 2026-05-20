@@ -5,10 +5,12 @@
 <div class="page-header compact-header">
     <div class="section-head">
         <div>
-            <h1>Бронь {{ booking.number }}</h1>
+            <div class="booking-title-row">
+                <h1>Бронь {{ booking.number }}</h1>
+                <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
+            </div>
             <p>{{ booking.bike.title }} для {{ booking.customer.full_name_or_phone }}</p>
         </div>
-        <span class="status-badge status-{{ booking.status }}">{{ booking.get_status_display }}</span>
     </div>
 </div>
 
@@ -32,7 +34,9 @@
         <h3>{{ next_step.title }}</h3>
         <p>{{ next_step.text }}</p>
     </div>
-    <a href="{% url 'booking-receipt' booking.pk %}" class="btn btn-secondary btn-sm">Квитанция</a>
+    {% if can_view_receipt %}
+        <a href="{% url 'booking-receipt' booking.pk %}" class="btn btn-secondary btn-sm">Квитанция</a>
+    {% endif %}
 </section>
 
 <section class="booking-workspace">
@@ -95,10 +99,14 @@
                 {% endif %}
 
                 {% if booking.status == 'active' %}
+                    <form method="post" action="{% url 'rental-extend' booking.pk %}" class="return-form" data-confirm="Продлить аренду {{ booking.number }}? Система проверит будущие брони и пересчитает стоимость.">
+                        {% csrf_token %}
+                        <input type="number" min="1" max="168" step="1" name="extend_hours" placeholder="Продлить, часов" class="table-input">
+                        <button type="submit" class="btn btn-secondary btn-sm">Продлить аренду</button>
+                    </form>
                     <form method="post" action="{% url 'rental-return' booking.pk %}" class="return-form" data-confirm="Завершить аренду {{ booking.number }}? Проверьте суммы и состояние велосипеда.">
                         {% csrf_token %}
-                        <input type="number" step="0.01" name="extra_time_fee" placeholder="Доплата, ₽" class="table-input">
-                        <input type="number" step="0.01" name="damage_fee" placeholder="Штраф, ₽" class="table-input">
+                        <input type="number" step="0.01" name="damage_fee" placeholder="Штраф за повреждение, ₽" class="table-input">
                         <input type="text" name="end_condition" placeholder="Состояние при возврате" class="table-input">
                         <button type="submit" class="btn btn-primary btn-sm">Завершить аренду</button>
                     </form>
@@ -287,7 +295,7 @@
     </details>
 
     <details class="card operator-collapse">
-        <summary>Суммы, штрафы и доплаты</summary>
+        <summary>Суммы и штрафы</summary>
         <div class="detail-grid grid-2">
             <section>
                 <h3>Из чего сложилась аренда</h3>
@@ -326,7 +334,7 @@
             </section>
 
             <section>
-                <h3>Залог и доплаты</h3>
+                <h3>Итог и штрафы</h3>
                 <div class="list-row">
                     <span>Залог</span>
                     <strong class="amount amount-deposit">{{ booking.deposit_amount }} ₽</strong>
@@ -343,10 +351,6 @@
                     <div class="list-row">
                         <span>Просрочка</span>
                         <strong class="amount {% if booking.rental.late_fee > 0 %}amount-danger{% else %}amount-muted{% endif %}">{{ booking.rental.late_fee }} ₽</strong>
-                    </div>
-                    <div class="list-row">
-                        <span>Доп. время</span>
-                        <strong class="amount {% if booking.rental.extra_time_fee > 0 %}amount-warning{% else %}amount-muted{% endif %}">{{ booking.rental.extra_time_fee }} ₽</strong>
                     </div>
                 {% else %}
                     <p class="muted">Штрафы появятся после возврата велосипеда.</p>

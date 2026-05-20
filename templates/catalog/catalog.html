@@ -17,9 +17,18 @@
             </a>
             <div>
                 <h3>{{ bike.title }}</h3>
-                <span class="status-badge status-{{ bike.status }}">
-                    {{ bike.get_status_display }}
-                </span>
+                <div class="bike-card-status">
+                    <span class="status-badge status-{{ bike.status }}">
+                        {{ bike.get_status_display }}
+                    </span>
+                    {% if bike.next_available_at %}
+                        <span class="availability-line">
+                            Свободен после <strong>{{ bike.next_available_at|date:"d.m.Y H:i" }}</strong>
+                        </span>
+                    {% elif bike.availability_text %}
+                        <span class="availability-line availability-line-warning">{{ bike.availability_text }}</span>
+                    {% endif %}
+                </div>
                 <p>{{ bike.description|default:"Надежный велосипед для города и активного отдыха." }}</p>
                 <div class="muted">
                     <span>Категория: {{ bike.category.name }}</span>

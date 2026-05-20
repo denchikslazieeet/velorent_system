@@ -1,3 +1,4 @@
+from datetime import timedelta
 import secrets
 
 from django.conf import settings
@@ -5,14 +6,15 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.shortcuts import redirect
+from django.core.mail import send_mail
+from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, FormView, ListView, UpdateView
 
-from .forms import AccountClaimForm, ProfileForm, UserLoginForm, UserRegisterForm
-from .models import User, UserNotification
+from .forms import AccountClaimForm, EmailVerificationForm, ProfileForm, UserLoginForm, UserRegisterForm
+from .models import EmailVerificationCode, User, UserNotification
 from .vk_oauth import VKOAuthError, build_authorize_url, exchange_code, get_user_profile
 from integrations.vk_notifications import send_vk_message
 
@@ -62,9 +64,66 @@ def update_user_from_vk(user, profile, token_data, overwrite_empty_only=True):
 
     if token_data.get('email') and not user.email:
         user.email = token_data['email']
+        user.email_verified_at = timezone.now()
         changed_fields.append('email')
+        changed_fields.append('email_verified_at')
+    elif token_data.get('email') and user.email == token_data['email'] and not user.email_verified_at:
+        user.email_verified_at = timezone.now()
+        changed_fields.append('email_verified_at')
 
     return changed_fields
+
+
+def send_email_verification_code(user, email):
+    verification_code, raw_code = EmailVerificationCode.create_for_user(user, email)
+    try:
+        sent_count = send_mail(
+            subject="ВелоРент: код подтверждения email",
+            message=(
+                f"Код подтверждения email: {raw_code}\n\n"
+                f"Код действует {settings.EMAIL_VERIFICATION_CODE_TTL_MINUTES} минут.\n"
+                "Если вы не добавляли этот email в ВелоРент, просто проигнорируйте письмо."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception:
+        verification_code.mark_used()
+        return False
+    if sent_count <= 0:
+        verification_code.mark_used()
+        return False
+    return True
+
+
+def email_resend_wait_seconds(verification_code):
+    if not verification_code:
+        return 0
+    available_at = verification_code.created_at + timedelta(seconds=settings.EMAIL_VERIFICATION_RESEND_SECONDS)
+    remaining = int((available_at - timezone.now()).total_seconds())
+    return max(remaining, 0)
+
+
+def email_verification_context(request, form=None, pending_code=None):
+    pending_code = pending_code or (
+        request.user.email_verification_codes
+        .filter(
+            used_at__isnull=True,
+            expires_at__gte=timezone.now(),
+            attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+        )
+        .first()
+    )
+    return {
+        'form': ProfileForm(instance=request.user, allow_email_edit=True),
+        'email_verification_form': form or EmailVerificationForm(user=request.user),
+        'pending_email_code': pending_code,
+        'pending_email_resend_wait': email_resend_wait_seconds(pending_code),
+        'email_edit_mode': True,
+        'vk_community_url': settings.VK_COMMUNITY_URL,
+        'vk_group_token_present': bool(settings.VK_GROUP_TOKEN),
+    }
 
 
 class UserRegisterView(CreateView):
@@ -302,15 +361,146 @@ class ProfileView(LoginRequiredMixin, UpdateView):
     def get_object(self, queryset=None):
         return self.request.user
 
+    def email_edit_mode(self):
+        if not self.request.user.email_is_verified:
+            return True
+        if self.get_pending_email_code():
+            return True
+        if self.request.method == 'POST':
+            return self.request.POST.get('edit_email') == '1'
+        return self.request.GET.get('edit_email') == '1'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['allow_email_edit'] = self.email_edit_mode()
+        return kwargs
+
+    def get_pending_email_code(self):
+        return (
+            self.request.user.email_verification_codes
+            .filter(
+                used_at__isnull=True,
+                expires_at__gte=timezone.now(),
+                attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+            )
+            .first()
+        )
+
+    def get_initial(self):
+        initial = super().get_initial()
+        pending_email_code = self.get_pending_email_code()
+        if pending_email_code:
+            initial['email'] = pending_email_code.email
+        return initial
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['vk_community_url'] = settings.VK_COMMUNITY_URL
         context['vk_group_token_present'] = bool(settings.VK_GROUP_TOKEN)
+        pending_email_code = self.get_pending_email_code()
+        context['pending_email_code'] = pending_email_code
+        context['pending_email_resend_wait'] = email_resend_wait_seconds(pending_email_code)
+        context['email_edit_mode'] = self.email_edit_mode()
+        context.setdefault('email_verification_form', EmailVerificationForm(user=self.request.user))
         return context
 
     def form_valid(self, form):
-        messages.success(self.request, "Профиль обновлен.")
-        return super().form_valid(form)
+        current_user = User.objects.get(pk=self.request.user.pk)
+        current_email = (current_user.email or '').strip().lower()
+        email_edit_mode = self.email_edit_mode()
+        requested_email = current_email
+        if email_edit_mode:
+            requested_email = (form.cleaned_data.get('email') or '').strip().lower()
+
+        user = form.save(commit=False)
+        email_changed = email_edit_mode and requested_email != current_email
+
+        if email_changed and not requested_email:
+            user.email = ""
+            user.email_verified_at = None
+            user.email_verification_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
+            user.save()
+            messages.success(self.request, "Профиль обновлен. Email отключен.")
+            return redirect(self.success_url)
+
+        user.email = current_user.email
+        user.email_verified_at = current_user.email_verified_at
+        user.save()
+
+        if email_changed:
+            sent = send_email_verification_code(user, requested_email)
+            if sent:
+                messages.info(self.request, f"Код подтверждения отправлен на {requested_email}.")
+            else:
+                messages.error(self.request, "Не удалось отправить код. Проверьте настройки почты и попробуйте еще раз.")
+        else:
+            messages.success(self.request, "Профиль обновлен.")
+        return redirect(self.success_url)
+
+
+class EmailVerificationConfirmView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        form = EmailVerificationForm(request.POST, user=request.user)
+        if not form.is_valid():
+            pending_code = (
+                request.user.email_verification_codes
+                .filter(
+                    used_at__isnull=True,
+                    expires_at__gte=timezone.now(),
+                    attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+                )
+                .first()
+            )
+            return render(
+                request,
+                'accounts/profile.html',
+                email_verification_context(request, form=form, pending_code=pending_code),
+            )
+
+        verification_code = form.verification_code
+        user = request.user
+        user.email = verification_code.email
+        user.email_verified_at = timezone.now()
+        user.save(update_fields=['email', 'email_verified_at'])
+        verification_code.mark_used()
+        user.email_verification_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
+        messages.success(request, "Email подтвержден и подключен к уведомлениям.")
+        return redirect('profile')
+
+
+class EmailVerificationResendView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        pending_code = (
+            request.user.email_verification_codes
+            .filter(
+                used_at__isnull=True,
+                expires_at__gte=timezone.now(),
+                attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+            )
+            .first()
+        )
+        if not pending_code:
+            messages.warning(request, "Нет активного email для подтверждения.")
+            return redirect('profile')
+
+        wait_seconds = email_resend_wait_seconds(pending_code)
+        if wait_seconds > 0:
+            messages.warning(request, f"Новый код можно отправить через {wait_seconds} сек.")
+            return redirect('profile')
+
+        sent = send_email_verification_code(request.user, pending_code.email)
+        if sent:
+            messages.info(request, f"Новый код отправлен на {pending_code.email}.")
+        else:
+            messages.error(request, "Не удалось отправить код. Попробуйте позже.")
+        return redirect('profile')
+
+
+class EmailVerificationCancelView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        request.user.email_verification_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
+        messages.success(request, "Подтверждение email отменено.")
+        return redirect('profile')
 
 
 class NotificationsListView(LoginRequiredMixin, ListView):

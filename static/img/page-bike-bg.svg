@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-label="Декоративный велосипед">
+  <defs>
+    <linearGradient id="frame" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f0b59f"/>
+      <stop offset="0.48" stop-color="#cf8f7c"/>
+      <stop offset="1" stop-color="#f6c8ac"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#020617" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+  <g filter="url(#soft-shadow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="278" cy="530" r="178" stroke="#151923" stroke-width="30"/>
+    <circle cx="922" cy="530" r="178" stroke="#151923" stroke-width="30"/>
+    <circle cx="278" cy="530" r="145" stroke="#2a3040" stroke-width="7" opacity="0.86"/>
+    <circle cx="922" cy="530" r="145" stroke="#2a3040" stroke-width="7" opacity="0.86"/>
+    <g stroke="#222838" stroke-width="4" opacity="0.62">
+      <path d="M278 530 L145 424 M278 530 L410 424 M278 530 L110 530 M278 530 L446 530 M278 530 L175 642 M278 530 L390 655"/>
+      <path d="M922 530 L790 424 M922 530 L1054 424 M922 530 L755 530 M922 530 L1090 530 M922 530 L820 642 M922 530 L1035 655"/>
+    </g>
+    <circle cx="278" cy="530" r="18" fill="#101622" stroke="#3b4154" stroke-width="5"/>
+    <circle cx="922" cy="530" r="18" fill="#101622" stroke="#3b4154" stroke-width="5"/>
+    <circle cx="594" cy="530" r="28" fill="#101622" stroke="#3b4154" stroke-width="8"/>
+    <path d="M278 530 L470 310 L594 530 Z" stroke="url(#frame)" stroke-width="34"/>
+    <path d="M470 310 L720 310 L922 530" stroke="url(#frame)" stroke-width="34"/>
+    <path d="M594 530 L720 310" stroke="url(#frame)" stroke-width="34"/>
+    <path d="M594 530 L438 530" stroke="url(#frame)" stroke-width="24"/>
+    <path d="M470 310 L430 205 H342" stroke="#1b202d" stroke-width="28"/>
+    <path d="M320 205 H472" stroke="#1b202d" stroke-width="24"/>
+    <path d="M720 310 L762 168" stroke="#1b202d" stroke-width="28"/>
+    <path d="M762 168 H860" stroke="#1b202d" stroke-width="24"/>
+    <path d="M842 170 C905 178 940 210 978 254" stroke="#1b202d" stroke-width="9"/>
+    <path d="M830 172 C885 218 900 276 922 530" stroke="#1b202d" stroke-width="7" opacity="0.8"/>
+    <path d="M606 530 L660 608" stroke="#1b202d" stroke-width="16"/>
+    <path d="M582 532 L528 600" stroke="#1b202d" stroke-width="16"/>
+    <path d="M646 606 H700 M486 602 H536" stroke="#1b202d" stroke-width="18"/>
+    <path d="M437 530 H280" stroke="#1b202d" stroke-width="9" opacity="0.72"/>
+    <path d="M438 530 H594" stroke="#1b202d" stroke-width="9" opacity="0.72"/>
+  </g>
+</svg>

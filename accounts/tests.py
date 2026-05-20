@@ -1,4 +1,5 @@
 from datetime import timedelta
+import re
 
 from django.core import mail
 from django.db import IntegrityError
@@ -7,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .forms import AccountClaimForm
-from .models import AccountAccessCode, User, UserNotification
+from .models import AccountAccessCode, EmailVerificationCode, User, UserNotification
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
 from integrations.vk_notifications import notify_booking_event, send_vk_message
 from rentals.models import Booking
@@ -90,6 +91,142 @@ class UserLoginTests(TestCase):
         self.assertRedirects(response, reverse("user-dashboard"))
 
 
+class EmailVerificationTests(TestCase):
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_profile_email_change_sends_code_without_changing_email_immediately(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            email="old@example.com",
+            email_verified_at=timezone.now(),
+            password="12345678",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("profile"), {
+            "first_name": "Иван",
+            "last_name": "Петров",
+            "email": "new@example.com",
+            "telegram": "",
+            "edit_email": "1",
+        })
+
+        self.assertRedirects(response, reverse("profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.email, "old@example.com")
+        self.assertTrue(user.email_is_verified)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("код подтверждения email", mail.outbox[0].subject.lower())
+        pending_code = EmailVerificationCode.objects.get(user=user)
+        self.assertEqual(pending_code.email, "new@example.com")
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_email_confirm_sets_verified_email(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            password="12345678",
+        )
+        self.client.force_login(user)
+        self.client.post(reverse("profile"), {
+            "first_name": "",
+            "last_name": "",
+            "email": "new@example.com",
+            "telegram": "",
+        })
+        raw_code = re.search(r"\b\d{6}\b", mail.outbox[0].body).group(0)
+
+        response = self.client.post(reverse("email-confirm"), {"code": raw_code})
+
+        self.assertRedirects(response, reverse("profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.email, "new@example.com")
+        self.assertTrue(user.email_is_verified)
+        self.assertFalse(user.email_verification_codes.filter(used_at__isnull=True).exists())
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        EMAIL_VERIFICATION_RESEND_SECONDS=60,
+    )
+    def test_email_code_resend_is_available_after_one_minute(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            password="12345678",
+        )
+        self.client.force_login(user)
+        self.client.post(reverse("profile"), {
+            "first_name": "",
+            "last_name": "",
+            "email": "new@example.com",
+            "telegram": "",
+        })
+        self.assertEqual(len(mail.outbox), 1)
+
+        response = self.client.post(reverse("email-resend"))
+        self.assertRedirects(response, reverse("profile"))
+        self.assertEqual(len(mail.outbox), 1)
+
+        EmailVerificationCode.objects.filter(user=user, used_at__isnull=True).update(
+            created_at=timezone.now() - timedelta(seconds=61)
+        )
+        response = self.client.post(reverse("email-resend"))
+
+        self.assertRedirects(response, reverse("profile"))
+        self.assertEqual(len(mail.outbox), 2)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_verified_email_is_not_changed_without_edit_mode(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            email="old@example.com",
+            email_verified_at=timezone.now(),
+            password="12345678",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("profile"), {
+            "first_name": "",
+            "last_name": "",
+            "email": "new@example.com",
+            "telegram": "",
+        })
+
+        self.assertRedirects(response, reverse("profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.email, "old@example.com")
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_verified_email_can_be_changed_in_edit_mode(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            email="old@example.com",
+            email_verified_at=timezone.now(),
+            password="12345678",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("profile"), {
+            "first_name": "",
+            "last_name": "",
+            "email": "new@example.com",
+            "telegram": "",
+            "edit_email": "1",
+        })
+
+        self.assertRedirects(response, reverse("profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.email, "old@example.com")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(
+            user.email_verification_codes.filter(used_at__isnull=True).first().email,
+            "new@example.com",
+        )
+
+
 class VKOAuthViewTests(TestCase):
     @override_settings(VK_CLIENT_ID="123", VK_CLIENT_SECRET="secret")
     def test_vk_login_redirects_to_vk_and_stores_state(self):
@@ -131,6 +268,7 @@ class UserNotificationTests(TestCase):
         self.user = User.objects.create_user(
             username="customer",
             email="customer@example.com",
+            email_verified_at=timezone.now(),
             role=User.Role.CUSTOMER,
         )
         self.location = PickupLocation.objects.create(name="ВелоРент - парк", address="Чита")

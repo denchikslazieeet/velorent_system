@@ -41,9 +41,6 @@
     </div>
 
     <form method="get" action="{% url 'operator-dashboard' %}#bookings-list" class="filter-form">
-        {% if current_quick %}
-            <input type="hidden" name="quick" value="{{ current_quick }}">
-        {% endif %}
         <input
             type="text"
             name="q"
@@ -138,11 +135,6 @@
                                 <a href="/rentals/booking/{{ booking.pk }}/" class="btn btn-secondary btn-sm">Завершить аренду</a>
                             {% endif %}
 
-                            {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                                <a href="{% url 'booking-cancel' booking.pk %}" class="btn btn-secondary btn-sm">Отменить</a>
-
-                                <a href="{% url 'booking-no-show-confirm' booking.pk %}" class="btn btn-secondary btn-sm">Неявка</a>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>

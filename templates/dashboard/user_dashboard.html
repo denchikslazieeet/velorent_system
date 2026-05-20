@@ -20,7 +20,7 @@
 </section>
 {% endif %}
 
-{% if not request.user.email %}
+{% if not request.user.email_is_verified %}
 <section class="card email-reminder-card" style="margin-bottom: 20px;">
     <div>
         <h3>Добавьте email для важных уведомлений</h3>

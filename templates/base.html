@@ -18,9 +18,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ВелоРент">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260513-6">
+    <link rel="stylesheet" href="/static/css/style.css?v=20260514-4">
 </head>
-<body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% endif %}">
+<body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% elif request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'register' or request.resolver_match.url_name == 'account-claim' or request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'bike-detail' or request.resolver_match.url_name == 'user-dashboard' %}client-art-shell{% endif %}">
 <header class="site-header">
     <div class="container nav">
         <a href="/" class="brand" aria-label="ВелоРент">
@@ -204,6 +204,31 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             element.addEventListener("click", confirmAction);
         }
+    });
+
+    document.querySelectorAll("[data-countdown-button]").forEach(function (button) {
+        let secondsLeft = parseInt(button.getAttribute("data-countdown-seconds") || "0", 10);
+        const defaultLabel = button.getAttribute("data-countdown-label") || button.textContent.trim();
+
+        if (!secondsLeft || secondsLeft <= 0) {
+            button.disabled = false;
+            button.textContent = defaultLabel;
+            return;
+        }
+
+        const renderCountdown = function () {
+            if (secondsLeft <= 0) {
+                button.disabled = false;
+                button.textContent = defaultLabel;
+                return;
+            }
+            button.disabled = true;
+            button.textContent = "Повторно через " + secondsLeft + " сек.";
+            secondsLeft -= 1;
+            window.setTimeout(renderCountdown, 1000);
+        };
+
+        renderCountdown();
     });
 });
 

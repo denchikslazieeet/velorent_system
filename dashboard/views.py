@@ -50,7 +50,7 @@ def booking_attention_badges(booking, now, today_start, tomorrow_start):
     badges = []
     if not booking.customer.document_verified:
         badges.append({'label': 'Документ', 'tone': 'warning'})
-    if not booking.customer.email:
+    if not booking.customer.email_is_verified:
         badges.append({'label': 'Нет email', 'tone': 'info'})
     if booking.status == Booking.Status.CONFIRMED and today_start <= booking.start_at < tomorrow_start:
         badges.append({'label': 'Выдача сегодня', 'tone': 'info'})
@@ -116,7 +116,10 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         q = (self.request.GET.get('q') or '').strip()
         status = (self.request.GET.get('status') or '').strip()
         quick = (self.request.GET.get('quick') or '').strip()
-        if not quick and not q and not status:
+        has_global_filters = bool(q or status)
+        if has_global_filters:
+            quick = 'all'
+        elif not quick:
             quick = 'work'
 
         now = timezone.now()
@@ -144,7 +147,7 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         )
         bookings = base_bookings
 
-        if quick == 'work':
+        if not has_global_filters and quick == 'work':
             bookings = bookings.filter(
                 status__in=[
                     Booking.Status.PENDING,
@@ -152,17 +155,17 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
                     Booking.Status.ACTIVE,
                 ]
             )
-        elif quick == 'pending':
+        elif not has_global_filters and quick == 'pending':
             bookings = bookings.filter(status=Booking.Status.PENDING)
-        elif quick == 'today':
+        elif not has_global_filters and quick == 'today':
             bookings = bookings.filter(
                 status=Booking.Status.CONFIRMED,
                 start_at__gte=today_start,
                 start_at__lt=tomorrow_start,
             )
-        elif quick == 'active':
+        elif not has_global_filters and quick == 'active':
             bookings = bookings.filter(status=Booking.Status.ACTIVE)
-        elif quick == 'returns':
+        elif not has_global_filters and quick == 'returns':
             bookings = bookings.filter(
                 status=Booking.Status.ACTIVE,
                 end_at__lt=tomorrow_start,
@@ -209,6 +212,12 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
         ).count()
         context['quick_filters'] = [
             {
+                'key': 'all',
+                'label': 'Все',
+                'count': base_bookings.count(),
+                'url': f"{reverse('operator-dashboard')}?quick=all#bookings-list",
+            },
+            {
                 'key': 'work',
                 'label': 'В работе',
                 'count': work_bookings_count,
@@ -237,12 +246,6 @@ class OperatorDashboardView(LoginRequiredMixin, OperatorRequiredMixin, TemplateV
                 'label': 'Вернуть сегодня',
                 'count': context['returns_today'],
                 'url': f"{reverse('operator-dashboard')}?quick=returns#bookings-list",
-            },
-            {
-                'key': 'all',
-                'label': 'Все',
-                'count': base_bookings.count(),
-                'url': f"{reverse('operator-dashboard')}?quick=all#bookings-list",
             },
         ]
         context['today_important'] = [

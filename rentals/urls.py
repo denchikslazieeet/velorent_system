@@ -7,6 +7,7 @@ from .views import (
     ConfirmBookingView,
     IssueRentalView,
     ReturnRentalView,
+    ExtendRentalView,
     OperatorBookingCreateView,
     CancelBookingView,
     MarkNoShowView,
@@ -30,5 +31,6 @@ urlpatterns = [
     path('booking/<int:pk>/access-code/', GenerateAccountAccessCodeView.as_view(), name='booking-access-code'),
     path('operator/booking/<int:pk>/confirm/', ConfirmBookingView.as_view(), name='booking-confirm'),
     path('operator/booking/<int:pk>/issue/', IssueRentalView.as_view(), name='rental-issue'),
+    path('operator/booking/<int:pk>/extend/', ExtendRentalView.as_view(), name='rental-extend'),
     path('operator/booking/<int:pk>/return/', ReturnRentalView.as_view(), name='rental-return'),
 ]

@@ -60,12 +60,12 @@
                     {% endif %}
                 </td>
                 <td>{{ customer.phone|default:"-" }}</td>
-                <td>
-                    {% if customer.document_verified %}
-                        <span class="status-badge status-completed">Проверен</span>
-                    {% else %}
+                    <td>
+                        {% if customer.document_verified %}
+                        <span class="status-badge status-success">Проверен</span>
+                        {% else %}
                         <span class="status-badge status-pending">Не проверен</span>
-                    {% endif %}
+                        {% endif %}
                 </td>
                 <td>{{ customer.total_rentals }}</td>
                 <td>{{ customer.completed_rentals }}</td>

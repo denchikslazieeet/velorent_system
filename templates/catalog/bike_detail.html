@@ -9,9 +9,18 @@
             </div>
         {% endif %}
         <h1>{{ bike.title }}</h1>
-        <span class="status-badge status-{{ bike.status }}">
-            {{ bike.get_status_display }}
-        </span>
+        <div class="bike-detail-status">
+            <span class="status-badge status-{{ bike.status }}">
+                {{ bike.get_status_display }}
+            </span>
+            {% if next_available_at %}
+                <span class="availability-line">
+                    Свободен после <strong>{{ next_available_at|date:"d.m.Y H:i" }}</strong>
+                </span>
+            {% elif availability_text %}
+                <span class="availability-line availability-line-warning">{{ availability_text }}</span>
+            {% endif %}
+        </div>
 
         <p>{{ bike.description|default:"Надежный велосипед для города и активного отдыха." }}</p>
 
@@ -78,6 +87,16 @@
         </div>
 
         {% if bike.status == 'available' or bike.status == 'reserved' %}
+            {% if next_available_at %}
+                <p class="muted">
+                    Текущая бронь закончится {{ next_available_at|date:"d.m.Y H:i" }}.
+                    Вы можете выбрать свободный период после этого времени.
+                </p>
+            {% elif availability_text %}
+                <p class="muted">У велосипеда стоит статус брони, но связанный период не найден. Вы можете выбрать время, система проверит доступность при оформлении.</p>
+            {% elif bike.status == 'reserved' %}
+                <p class="muted">Велосипед отмечен как забронированный. Вы можете выбрать время, система проверит доступность при оформлении.</p>
+            {% endif %}
             <a href="/rentals/book/{{ bike.slug }}/new/" class="btn btn-primary full">Выбрать время</a>
         {% elif bike.status == 'service' %}
             <div class="card warning-card" style="padding: 16px; margin-top: 14px;">

@@ -1,11 +1,13 @@
 {% load static %}
-const CACHE_NAME = "velorent-pwa-v11";
+const CACHE_NAME = "velorent-pwa-v26";
 const OFFLINE_URL = "{% url 'offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "{% static 'css/style.css' %}?v=20260513-6",
+  "{% static 'css/style.css' %}?v=20260514-3",
   "{% static 'img/velorent-icon.svg' %}",
   "{% static 'img/velorent-logo.svg' %}",
+  "{% static 'img/page-bike-bg.png' %}",
+  "{% static 'img/page-bike-bg.svg' %}",
   "{% static 'img/pwa-icon-192.png' %}",
   "{% static 'img/pwa-icon-512.png' %}"
 ];

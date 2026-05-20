@@ -116,7 +116,7 @@ def booking_next_step(booking, user, pending_rental_payment=None):
     if booking.status == Booking.Status.ACTIVE:
         return {
             "title": "Аренда активна",
-            "text": "Верните велосипед в плановое время, чтобы избежать доплат за просрочку.",
+            "text": "Верните велосипед в плановое время, чтобы избежать штрафа за просрочку.",
             "level": "info",
         }
     if booking.status == Booking.Status.COMPLETED and pending_rental_payment:
@@ -207,14 +207,23 @@ def receipt_totals(booking):
     rental_total = rental.final_price if rental and rental.final_price else booking.quoted_price
     damage_fee = rental.damage_fee if rental else Decimal("0")
     late_fee = rental.late_fee if rental else Decimal("0")
-    extra_time_fee = rental.extra_time_fee if rental else Decimal("0")
     return {
         "rental_total": rental_total,
         "damage_fee": damage_fee,
         "late_fee": late_fee,
-        "extra_time_fee": extra_time_fee,
         "deposit_amount": booking.deposit_amount,
     }
+
+
+def receipt_is_ready(booking, pending_rental_payment=None):
+    if booking.status != Booking.Status.COMPLETED:
+        return False
+    if pending_rental_payment is not None:
+        return False
+    return not booking.payments.filter(
+        kind=Payment.Kind.RENTAL,
+        status=Payment.Status.PENDING,
+    ).exists()
 
 
 class BookingCreateView(LoginRequiredMixin, CreateView):
@@ -408,6 +417,7 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             can_mark_no_show = timezone.now() >= no_show_allowed_at
 
         context['pending_rental_payment'] = pending_rental_payment
+        context['can_view_receipt'] = receipt_is_ready(booking, pending_rental_payment)
         context['next_step'] = booking_next_step(booking, self.request.user, pending_rental_payment)
         context['booking_timeline'] = booking_timeline(booking)
         context['document_type_choices'] = booking.customer.DocumentType.choices
@@ -474,6 +484,13 @@ class BookingReceiptView(LoginRequiredMixin, DetailView):
         if is_operator_user(user):
             return qs
         return qs.filter(customer=user)
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not receipt_is_ready(self.object):
+            messages.warning(request, 'Квитанция будет доступна после завершения аренды.')
+            return redirect('booking-detail', pk=self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -658,18 +675,13 @@ class ReturnRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
         except InvalidOperation:
             damage_fee = Decimal("0")
 
-        try:
-            extra_time_fee = Decimal(request.POST.get('extra_time_fee') or "0")
-        except InvalidOperation:
-            extra_time_fee = Decimal("0")
-
         rental.received_by = request.user
         rental.actual_end_at = actual_end_at
         rental.end_condition = request.POST.get('end_condition', '')
         rental.damage_fee = damage_fee
         rental.late_fee = compute_late_fee(booking, actual_end_at)
-        rental.extra_time_fee = extra_time_fee
-        rental.final_price = booking.quoted_price + rental.late_fee + rental.damage_fee + rental.extra_time_fee
+        rental.extra_time_fee = Decimal("0")
+        rental.final_price = booking.quoted_price + rental.late_fee + rental.damage_fee
         rental.status = Rental.Status.COMPLETED
         rental.save()
 
@@ -698,6 +710,72 @@ class ReturnRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
         messages.success(
             request,
             f'Аренда {booking.number} завершена. Сумма к оплате рассчитана.'
+        )
+        return redirect('booking-detail', pk=booking.pk)
+
+
+class ExtendRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
+    model = Booking
+
+    def post(self, request, *args, **kwargs):
+        booking = self.get_object()
+        rental = booking.rental
+
+        if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
+            messages.warning(request, 'Продлить можно только активную аренду.')
+            return redirect('booking-detail', pk=booking.pk)
+
+        try:
+            extend_hours = int(request.POST.get('extend_hours') or "0")
+        except (TypeError, ValueError):
+            extend_hours = 0
+
+        if extend_hours < 1 or extend_hours > 24 * 7:
+            messages.warning(request, 'Укажите продление от 1 часа до 7 дней.')
+            return redirect('booking-detail', pk=booking.pk)
+
+        extension_start = max(booking.end_at, timezone.now())
+        new_end_at = extension_start + timedelta(hours=extend_hours)
+
+        conflict_exists = Booking.objects.filter(
+            bike=booking.bike,
+            status__in=[
+                Booking.Status.PENDING,
+                Booking.Status.CONFIRMED,
+                Booking.Status.ACTIVE,
+            ],
+            start_at__lt=new_end_at,
+            end_at__gt=booking.end_at,
+        ).exclude(pk=booking.pk).exists()
+
+        if conflict_exists:
+            messages.warning(
+                request,
+                'Продлить нельзя: на это время велосипед уже забронирован другим клиентом.'
+            )
+            return redirect('booking-detail', pk=booking.pk)
+
+        previous_price = booking.quoted_price
+        quoted_price, _ = calculate_booking_quote(
+            booking.start_at,
+            new_end_at,
+            booking.tariff,
+            customer=booking.customer,
+        )
+        extension_price = max(quoted_price - previous_price, Decimal("0"))
+
+        booking.end_at = new_end_at
+        booking.quoted_price = quoted_price
+        booking.save(update_fields=['end_at', 'quoted_price', 'updated_at'])
+
+        queue_booking_sync(booking)
+        notify_booking_event(booking, "extended")
+        messages.success(
+            request,
+            (
+                f'Аренда продлена до {timezone.localtime(new_end_at):%d.%m.%Y %H:%M}. '
+                f'Доплата за продление: {extension_price} ₽.'
+            )
         )
         return redirect('booking-detail', pk=booking.pk)
 

@@ -9,8 +9,8 @@ from django.utils import timezone
 from accounts.models import User
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
 from rentals.forms import BookingForm, OperatorBookingForm
-from rentals.models import Booking, Rental, make_booking_number
-from rentals.services import bike_available_for_period, calculate_booking_quote, compute_late_fee
+from rentals.models import Booking, Payment, Rental, make_booking_number
+from rentals.services import bike_available_for_period, bike_next_available_at, calculate_booking_quote, compute_late_fee
 
 class BookingServiceTests(TestCase):
     def setUp(self):
@@ -80,6 +80,18 @@ class BookingServiceTests(TestCase):
         )
 
     def test_reserved_bike_stays_visible_for_new_period_selection(self):
+        start_at = timezone.now() + timedelta(hours=1)
+        end_at = start_at + timedelta(hours=2)
+        Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=start_at,
+            end_at=end_at,
+            status=Booking.Status.CONFIRMED,
+        )
         self.bike.status = Bike.Status.RESERVED
         self.bike.save(update_fields=["status"])
 
@@ -87,7 +99,42 @@ class BookingServiceTests(TestCase):
         operator_form = OperatorBookingForm()
 
         self.assertContains(response, self.bike.title)
+        self.assertContains(response, "Свободен после")
+        self.assertEqual(bike_next_available_at(self.bike), end_at)
         self.assertIn(self.bike, operator_form.fields["bike"].queryset)
+
+    def test_reserved_bike_without_future_booking_shows_explanation(self):
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        catalog_response = self.client.get(reverse("catalog"))
+        detail_response = self.client.get(reverse("bike-detail", kwargs={"slug": self.bike.slug}))
+
+        self.assertContains(catalog_response, self.bike.title)
+        self.assertContains(catalog_response, "Период брони не найден")
+        self.assertContains(detail_response, "Период брони не найден")
+        self.assertContains(detail_response, "Выбрать время")
+
+    def test_reserved_bike_with_stale_confirmed_booking_still_shows_end_time(self):
+        start_at = timezone.now() - timedelta(hours=5)
+        end_at = timezone.now() - timedelta(hours=2)
+        Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=start_at,
+            end_at=end_at,
+            status=Booking.Status.CONFIRMED,
+        )
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        response = self.client.get(reverse("bike-detail", kwargs={"slug": self.bike.slug}))
+
+        self.assertContains(response, "Свободен после")
+        self.assertEqual(bike_next_available_at(self.bike), end_at)
 
     def test_quote_rounds_started_hour_up(self):
         start_at = timezone.now()
@@ -155,6 +202,36 @@ class BookingServiceTests(TestCase):
 
         self.assertContains(response, "Что дальше?")
         self.assertContains(response, "История брони")
+        self.assertNotContains(response, "Квитанция")
+
+    def test_booking_detail_shows_receipt_after_rental_is_closed(self):
+        booking = Booking.objects.create(
+            number="VR-2004",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=3),
+            end_at=timezone.now() - timedelta(hours=1),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.COMPLETED,
+        )
+        Rental.objects.create(
+            booking=booking,
+            status=Rental.Status.COMPLETED,
+            final_price=Decimal("400.00"),
+        )
+        Payment.objects.create(
+            booking=booking,
+            amount=Decimal("400.00"),
+            kind=Payment.Kind.RENTAL,
+            status=Payment.Status.PAID,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("booking-detail", kwargs={"pk": booking.pk}))
+
         self.assertContains(response, "Квитанция")
 
     def test_booking_receipt_page_is_available_to_customer(self):
@@ -164,18 +241,102 @@ class BookingServiceTests(TestCase):
             bike=self.bike,
             pickup_location=self.location,
             tariff=self.tariff,
-            start_at=timezone.now() + timedelta(hours=1),
-            end_at=timezone.now() + timedelta(hours=3),
+            start_at=timezone.now() - timedelta(hours=3),
+            end_at=timezone.now() - timedelta(hours=1),
             quoted_price=Decimal("400.00"),
             deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.COMPLETED,
         )
-        Rental.objects.create(booking=booking)
+        Rental.objects.create(
+            booking=booking,
+            status=Rental.Status.COMPLETED,
+            final_price=Decimal("400.00"),
+        )
+        Payment.objects.create(
+            booking=booking,
+            amount=Decimal("400.00"),
+            kind=Payment.Kind.RENTAL,
+            status=Payment.Status.PAID,
+        )
         self.client.force_login(self.user)
 
         response = self.client.get(reverse("booking-receipt", kwargs={"pk": booking.pk}))
 
         self.assertContains(response, "Квитанция по аренде")
         self.assertContains(response, "Печать")
+
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_operator_can_extend_active_rental(self):
+        operator = User.objects.create_user(
+            username="operator-extend",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2010",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=1),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.ACTIVE,
+        )
+        Rental.objects.create(booking=booking, status=Rental.Status.ACTIVE)
+        self.client.force_login(operator)
+
+        response = self.client.post(reverse("rental-extend", kwargs={"pk": booking.pk}), {
+            "extend_hours": "2",
+        })
+
+        booking.refresh_from_db()
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+        self.assertGreater(booking.end_at, timezone.now() + timedelta(hours=2))
+        self.assertGreater(booking.quoted_price, Decimal("400.00"))
+
+    def test_operator_cannot_extend_active_rental_into_future_booking(self):
+        operator = User.objects.create_user(
+            username="operator-conflict",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2011",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=1),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.ACTIVE,
+        )
+        Rental.objects.create(booking=booking, status=Rental.Status.ACTIVE)
+        other_customer = User.objects.create_user(username="future-client", password="12345678")
+        Booking.objects.create(
+            number="VR-2012",
+            customer=other_customer,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=booking.end_at + timedelta(minutes=30),
+            end_at=booking.end_at + timedelta(hours=2),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        self.client.force_login(operator)
+
+        response = self.client.post(reverse("rental-extend", kwargs={"pk": booking.pk}), {
+            "extend_hours": "2",
+        })
+
+        booking.refresh_from_db()
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+        self.assertEqual(booking.quoted_price, Decimal("400.00"))
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
@@ -187,6 +348,7 @@ class BookingServiceTests(TestCase):
             username="customer",
             phone="79960000002",
             email="customer@example.com",
+            email_verified_at=timezone.now(),
             password="12345678",
         )
         operator = User.objects.create_user(

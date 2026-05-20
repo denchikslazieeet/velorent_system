@@ -17,12 +17,58 @@
 </section>
 {% endif %}
 
-{% if request.user.role == 'customer' and not request.user.email %}
+{% if request.user.role == 'customer' and not request.user.email_is_verified %}
 <section class="card email-reminder-card" style="margin-bottom: 20px;">
     <div>
         <h3>Email важен для уведомлений</h3>
-        <p>Укажите почту, чтобы получать подтверждения брони, выдачу, возврат и оплату не только на сайте.</p>
+        <p>Укажите и подтвердите почту, чтобы получать подтверждения брони, выдачу, возврат и оплату не только на сайте.</p>
     </div>
+</section>
+{% endif %}
+
+{% if pending_email_code %}
+<section class="card email-confirm-card" style="margin-bottom: 20px;">
+    <div class="email-confirm-copy">
+        <div>
+            <h3>Подтвердите email</h3>
+            <p>Код отправлен на {{ pending_email_code.email }}. После подтверждения почта подключится к уведомлениям.</p>
+        </div>
+        <span class="status-badge status-pending">Ожидает код</span>
+    </div>
+    <form method="post" action="{% url 'email-confirm' %}" class="email-confirm-form">
+        {% csrf_token %}
+        <div class="email-code-row">
+            <div class="form-field">
+                <label for="{{ email_verification_form.code.id_for_label }}">{{ email_verification_form.code.label }}</label>
+                {{ email_verification_form.code }}
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Подтвердить</button>
+        </div>
+        {% for error in email_verification_form.code.errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+        {% for error in email_verification_form.non_field_errors %}
+            <div class="field-error">{{ error }}</div>
+        {% endfor %}
+        <div class="email-secondary-actions">
+            <button
+                type="submit"
+                formaction="{% url 'email-resend' %}"
+                class="btn btn-secondary btn-sm"
+                data-countdown-button
+                data-countdown-seconds="{{ pending_email_resend_wait|default:0 }}"
+                data-countdown-label="Отправить еще раз"
+                {% if pending_email_resend_wait %}disabled{% endif %}
+            >
+                {% if pending_email_resend_wait %}
+                    Повторно через {{ pending_email_resend_wait }} сек.
+                {% else %}
+                    Отправить еще раз
+                {% endif %}
+            </button>
+            <button type="submit" formaction="{% url 'email-cancel' %}" class="btn btn-secondary btn-sm">Отменить</button>
+        </div>
+    </form>
 </section>
 {% endif %}
 
@@ -59,9 +105,24 @@
                 {% endfor %}
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            <div class="form-field profile-email-field">
+                <div class="field-label-row">
+                    <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                    {% if request.user.email_is_verified and not pending_email_code %}
+                        {% if email_edit_mode %}
+                            <a href="{% url 'profile' %}" class="field-action-link">Отмена</a>
+                        {% else %}
+                            <a href="{% url 'profile' %}?edit_email=1" class="field-action-link">Изменить email</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% if email_edit_mode %}
+                    <input type="hidden" name="edit_email" value="1">
+                {% endif %}
                 {{ form.email }}
+                {% if request.user.email_is_verified and email_edit_mode %}
+                    <div class="field-hint">После сохранения отправим код подтверждения на новый email.</div>
+                {% endif %}
                 {% for error in form.email.errors %}
                     <div class="field-error">{{ error }}</div>
                 {% endfor %}
@@ -89,17 +150,21 @@
             <div class="section-head">
                 <h3>Уведомления</h3>
                 {% if request.user.role != 'customer' %}
-                    <span class="status-badge status-completed">Рабочий режим</span>
-                {% elif request.user.email %}
-                    <span class="status-badge status-completed">Email подключен</span>
+                    <span class="status-badge status-success">Рабочий режим</span>
+                {% elif request.user.email_is_verified %}
+                    <span class="status-badge status-success">Email подключен</span>
+                {% elif pending_email_code %}
+                    <span class="status-badge status-pending">Ожидает код</span>
                 {% else %}
                     <span class="status-badge status-pending">Email не указан</span>
                 {% endif %}
             </div>
             {% if request.user.role != 'customer' %}
                 <p class="muted">Служебные события приходят в раздел уведомлений оператора.</p>
-            {% elif request.user.email %}
+            {% elif request.user.email_is_verified %}
                 <p class="muted">Важные события по броням будут приходить на {{ request.user.email }} и в раздел уведомлений.</p>
+            {% elif pending_email_code %}
+                <p class="muted">Введите одноразовый код из письма, чтобы подключить {{ pending_email_code.email }}.</p>
             {% else %}
                 <p class="muted">Пока уведомления сохраняются только на сайте. Добавьте email в форме слева.</p>
             {% endif %}
@@ -109,7 +174,7 @@
             <div class="section-head">
                 <h3>VK</h3>
                 {% if request.user.vk_id %}
-                    <span class="status-badge status-completed">Привязан</span>
+                    <span class="status-badge status-success">Привязан</span>
                 {% else %}
                     <span class="status-badge status-pending">Не привязан</span>
                 {% endif %}
@@ -160,7 +225,7 @@
             <div class="section-head">
                 <h3>Верификация</h3>
                 {% if request.user.document_verified %}
-                    <span class="status-badge status-completed">Проверено</span>
+                    <span class="status-badge status-success">Проверено</span>
                 {% else %}
                     <span class="status-badge status-pending">На месте</span>
                 {% endif %}

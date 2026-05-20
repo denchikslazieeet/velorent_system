@@ -7,7 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import AccountAccessCode, User
+from .models import AccountAccessCode, EmailVerificationCode, User
 
 
 def normalize_phone(value: str) -> str:
@@ -150,9 +150,64 @@ class ProfileForm(forms.ModelForm):
             "telegram": forms.TextInput(attrs={"placeholder": "@username"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, allow_email_edit=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["phone"].initial = format_phone(self.instance.phone)
+        if self.instance.email_is_verified and not allow_email_edit:
+            self.fields["email"].disabled = True
+
+
+class EmailVerificationForm(forms.Form):
+    code = forms.CharField(
+        label="Код из письма",
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            "placeholder": "123456",
+            "inputmode": "numeric",
+            "autocomplete": "one-time-code",
+        })
+    )
+
+    error_messages = {
+        "invalid_code": "Код указан неверно или устарел. Проверьте письмо или запросите новый код.",
+    }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.verification_code = None
+
+    def clean_code(self):
+        code = ''.join(ch for ch in self.cleaned_data["code"] if ch.isdigit())
+        if len(code) != 6:
+            raise ValidationError("Введите 6 цифр кода.")
+        return code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        code = cleaned_data.get("code")
+        if not code or not self.user:
+            return cleaned_data
+
+        active_codes = self.user.email_verification_codes.filter(
+            used_at__isnull=True,
+            expires_at__gte=timezone.now(),
+            attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+        )
+
+        for verification_code in active_codes:
+            if verification_code.check_code(code):
+                self.verification_code = verification_code
+                break
+
+        if self.verification_code is None:
+            latest_code = active_codes.first()
+            if latest_code:
+                latest_code.attempts += 1
+                latest_code.save(update_fields=["attempts"])
+            raise ValidationError(self.error_messages["invalid_code"])
+
+        return cleaned_data
 
 
 class AccountClaimForm(forms.Form):

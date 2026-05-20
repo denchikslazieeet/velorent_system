@@ -1,4 +1,5 @@
 from decimal import Decimal, ROUND_CEILING
+from django.utils import timezone
 from catalog.models import Bike
 from .models import Booking
 
@@ -44,6 +45,34 @@ def bike_available_for_period(bike: Bike, start_at, end_at) -> bool:
         end_at__gt=start_at,
     ).exists()
     return not conflict_exists
+
+
+ACTIVE_BOOKING_STATUSES = [
+    Booking.Status.PENDING,
+    Booking.Status.CONFIRMED,
+    Booking.Status.ACTIVE,
+]
+
+
+def bike_reservation_booking(bike: Bike, from_at=None):
+    from_at = from_at or timezone.now()
+    bookings = Booking.objects.filter(
+        bike=bike,
+        status__in=ACTIVE_BOOKING_STATUSES,
+    )
+
+    next_booking = bookings.filter(end_at__gt=from_at).order_by("start_at", "end_at").first()
+    if next_booking:
+        return next_booking
+
+    return bookings.order_by("-end_at").first()
+
+
+def bike_next_available_at(bike: Bike, from_at=None):
+    reservation = bike_reservation_booking(bike, from_at=from_at)
+    if reservation:
+        return reservation.end_at
+    return None
 
 
 def compute_late_fee(booking, actual_end_at):

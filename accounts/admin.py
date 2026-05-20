@@ -1,19 +1,20 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import AccountAccessCode, User, UserNotification
+from .models import AccountAccessCode, EmailVerificationCode, User, UserNotification
 
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        ("Дополнительные данные", {"fields": ("phone", "telegram", "role")}),
+        ("Дополнительные данные", {"fields": ("phone", "telegram", "role", "email_verified_at")}),
         ("VK", {"fields": ("vk_id", "vk_screen_name", "vk_photo_url", "vk_notifications_enabled")}),
     )
     list_display = (
         "username",
         "staff_display",
         "email",
+        "email_verified_at",
         "first_name",
         "last_name",
         "role",
@@ -21,7 +22,7 @@ class CustomUserAdmin(UserAdmin):
         "vk_notifications_enabled",
         "is_staff",
     )
-    list_filter = ("role", "vk_notifications_enabled", "is_staff", "is_superuser")
+    list_filter = ("role", "vk_notifications_enabled", "email_verified_at", "is_staff", "is_superuser")
 
 
 @admin.register(AccountAccessCode)
@@ -34,6 +35,14 @@ class AccountAccessCodeAdmin(admin.ModelAdmin):
     @admin.display(description="Код выдал")
     def created_by_display(self, obj):
         return obj.created_by.staff_display if obj.created_by else "-"
+
+
+@admin.register(EmailVerificationCode)
+class EmailVerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ("user", "email", "created_at", "expires_at", "used_at", "attempts")
+    list_filter = ("created_at", "expires_at", "used_at")
+    search_fields = ("user__username", "user__phone", "user__email", "email")
+    readonly_fields = ("user", "email", "code_hash", "expires_at", "used_at", "attempts", "created_at")
 
 
 @admin.register(UserNotification)
