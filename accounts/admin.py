@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import AccountAccessCode, EmailVerificationCode, User, UserNotification
+from .models import AccountAccessCode, EmailVerificationCode, PasswordChangeCode, User, UserNotification
 
 
 @admin.register(User)
@@ -43,6 +43,14 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     list_filter = ("created_at", "expires_at", "used_at")
     search_fields = ("user__username", "user__phone", "user__email", "email")
     readonly_fields = ("user", "email", "code_hash", "expires_at", "used_at", "attempts", "created_at")
+
+
+@admin.register(PasswordChangeCode)
+class PasswordChangeCodeAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "expires_at", "used_at", "attempts")
+    list_filter = ("created_at", "expires_at", "used_at")
+    search_fields = ("user__username", "user__phone", "user__email")
+    readonly_fields = ("user", "code_hash", "expires_at", "used_at", "attempts", "created_at")
 
 
 @admin.register(UserNotification)

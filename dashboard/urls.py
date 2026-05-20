@@ -12,6 +12,7 @@ from .views import (
     OperatorCustomersListView,
     OperatorCustomerDetailView,
     OperatorBikeListView,
+    GenerateCustomerAccessCodeView,
 )
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     path("operator/bikes/", OperatorBikeListView.as_view(), name="operator-bikes"),
     path("operator/customers/", OperatorCustomersListView.as_view(), name="operator-customers"),
     path("operator/customers/<int:pk>/", OperatorCustomerDetailView.as_view(), name="operator-customer-detail"),
+    path("operator/customers/<int:pk>/access-code/", GenerateCustomerAccessCodeView.as_view(), name="operator-customer-access-code"),
     path("operator/revenue/", RevenueListView.as_view(), name="operator-revenue"),
     path("operator/analytics/", AnalyticsView.as_view(), name="operator-analytics"),
     path("operator/analytics/bookings/", AnalyticsBookingsDetailView.as_view(), name="analytics-bookings"),

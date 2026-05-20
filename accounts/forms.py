@@ -7,7 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import AccountAccessCode, EmailVerificationCode, User
+from .models import AccountAccessCode, EmailVerificationCode, PasswordChangeCode, User
 
 
 def normalize_phone(value: str) -> str:
@@ -201,6 +201,100 @@ class EmailVerificationForm(forms.Form):
                 break
 
         if self.verification_code is None:
+            latest_code = active_codes.first()
+            if latest_code:
+                latest_code.attempts += 1
+                latest_code.save(update_fields=["attempts"])
+            raise ValidationError(self.error_messages["invalid_code"])
+
+        return cleaned_data
+
+
+class PasswordChangeByEmailForm(forms.Form):
+    current_password = forms.CharField(
+        label="Текущий пароль",
+        widget=forms.PasswordInput(attrs={
+            "placeholder": "Введите текущий пароль",
+            "autocomplete": "current-password",
+        })
+    )
+    code = forms.CharField(
+        label="Код из письма",
+        max_length=6,
+        widget=forms.TextInput(attrs={
+            "placeholder": "123456",
+            "inputmode": "numeric",
+            "autocomplete": "one-time-code",
+        })
+    )
+    password1 = forms.CharField(
+        label="Новый пароль",
+        widget=forms.PasswordInput(attrs={
+            "placeholder": "Минимум 8 символов",
+            "autocomplete": "new-password",
+        }),
+        help_text="Минимум 8 символов."
+    )
+    password2 = forms.CharField(
+        label="Повторите новый пароль",
+        widget=forms.PasswordInput(attrs={
+            "placeholder": "Повторите новый пароль",
+            "autocomplete": "new-password",
+        })
+    )
+
+    error_messages = {
+        "invalid_code": "Код указан неверно или устарел. Проверьте письмо или запросите новый код.",
+    }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.password_code = None
+
+    def clean_code(self):
+        code = ''.join(ch for ch in self.cleaned_data["code"] if ch.isdigit())
+        if len(code) != 6:
+            raise ValidationError("Введите 6 цифр кода.")
+        return code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not self.user:
+            return cleaned_data
+
+        current_password = cleaned_data.get("current_password")
+        code = cleaned_data.get("code")
+        password1 = cleaned_data.get("password1")
+        password2 = cleaned_data.get("password2")
+
+        if current_password and not self.user.check_password(current_password):
+            self.add_error("current_password", "Текущий пароль указан неверно.")
+
+        if password1 and password2 and password1 != password2:
+            self.add_error("password2", "Пароли не совпадают.")
+
+        if password1:
+            try:
+                validate_password(password1, self.user)
+            except ValidationError as exc:
+                self.add_error("password1", exc)
+
+        if not code:
+            return cleaned_data
+
+        active_codes = self.user.password_change_codes.filter(
+            used_at__isnull=True,
+            expires_at__gte=timezone.now(),
+            attempts__lt=settings.PASSWORD_CHANGE_CODE_MAX_ATTEMPTS,
+        )
+
+        for password_code in active_codes:
+            if password_code.check_code(code):
+                self.password_code = password_code
+                break
+
+        if self.password_code is None:
             latest_code = active_codes.first()
             if latest_code:
                 latest_code.attempts += 1

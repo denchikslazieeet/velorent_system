@@ -1,14 +1,19 @@
 from datetime import timedelta
 
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum, Q, Count
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.views import View
 from django.views.generic import TemplateView, ListView, DetailView
 
 from catalog.models import Bike
 from rentals.models import Booking, Rental, Payment
+from accounts.models import AccountAccessCode
 from .mixins import OperatorRequiredMixin
 
 User = get_user_model()
@@ -438,7 +443,31 @@ class OperatorCustomerDetailView(LoginRequiredMixin, OperatorRequiredMixin, Deta
         context['all_rentals'] = rentals
         context['all_payments'] = payments
 
+        access_code_notice = self.request.session.get('customer_access_code_notice')
+        if access_code_notice and access_code_notice.get('customer_id') == customer.pk:
+            context['customer_access_code_notice'] = access_code_notice
+            del self.request.session['customer_access_code_notice']
+            self.request.session.modified = True
+
         return context
+
+
+class GenerateCustomerAccessCodeView(LoginRequiredMixin, OperatorRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        customer = get_object_or_404(User.objects.filter(role=User.Role.CUSTOMER), pk=pk)
+
+        if customer.has_usable_password():
+            messages.info(request, "У клиента уже есть пароль. Смена пароля выполняется через подтвержденный email клиента.")
+            return redirect('operator-customer-detail', pk=customer.pk)
+
+        _, raw_code = AccountAccessCode.create_for_user(customer, created_by=request.user)
+        request.session['customer_access_code_notice'] = {
+            'customer_id': customer.pk,
+            'code': raw_code,
+            'ttl_minutes': settings.ACCOUNT_ACCESS_CODE_TTL_MINUTES,
+        }
+        messages.success(request, "Код доступа создан. Покажите его клиенту лично.")
+        return redirect('operator-customer-detail', pk=customer.pk)
 
 
 class AnalyticsView(LoginRequiredMixin, OperatorRequiredMixin, TemplateView):

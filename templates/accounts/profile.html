@@ -73,77 +73,170 @@
 {% endif %}
 
 <section class="profile-layout">
-    <form method="post" class="card form-card profile-main-card">
-        {% csrf_token %}
+    <div class="profile-main-stack">
+        <form method="post" class="card form-card profile-main-card">
+            {% csrf_token %}
 
-        <div class="section-head">
-            <h3>Личные данные</h3>
-        </div>
-
-        {% if form.non_field_errors %}
-            <div class="form-errors">
-                {% for error in form.non_field_errors %}
-                    <div class="field-error">{{ error }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        <div class="form-grid grid-2">
-            <div class="form-field">
-                <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
-                {{ form.first_name }}
-                {% for error in form.first_name.errors %}
-                    <div class="field-error">{{ error }}</div>
-                {% endfor %}
+            <div class="section-head">
+                <h3>Личные данные</h3>
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
-                {{ form.last_name }}
-                {% for error in form.last_name.errors %}
-                    <div class="field-error">{{ error }}</div>
-                {% endfor %}
-            </div>
+            {% if form.non_field_errors %}
+                <div class="form-errors">
+                    {% for error in form.non_field_errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-            <div class="form-field profile-email-field">
-                <div class="field-label-row">
-                    <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-                    {% if request.user.email_is_verified and not pending_email_code %}
-                        {% if email_edit_mode %}
-                            <a href="{% url 'profile' %}" class="field-action-link">Отмена</a>
-                        {% else %}
-                            <a href="{% url 'profile' %}?edit_email=1" class="field-action-link">Изменить email</a>
+            <div class="form-grid grid-2">
+                <div class="form-field">
+                    <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                    {{ form.first_name }}
+                    {% for error in form.first_name.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                    {{ form.last_name }}
+                    {% for error in form.last_name.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field profile-email-field">
+                    <div class="field-label-row">
+                        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                        {% if request.user.email_is_verified and not pending_email_code %}
+                            {% if email_edit_mode %}
+                                <a href="{% url 'profile' %}" class="field-action-link">Отмена</a>
+                            {% else %}
+                                <a href="{% url 'profile' %}?edit_email=1" class="field-action-link">Изменить email</a>
+                            {% endif %}
                         {% endif %}
+                    </div>
+                    {% if email_edit_mode %}
+                        <input type="hidden" name="edit_email" value="1">
+                    {% endif %}
+                    {{ form.email }}
+                    {% if request.user.email_is_verified and email_edit_mode %}
+                        <div class="field-hint">После сохранения отправим код подтверждения на новый email.</div>
+                    {% endif %}
+                    {% for error in form.email.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form.telegram.id_for_label }}">{{ form.telegram.label }}</label>
+                    {{ form.telegram }}
+                    {% for error in form.telegram.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-field">
+                    <label>{{ form.phone.label }}</label>
+                    {{ form.phone }}
+                </div>
+            </div>
+
+            <button class="btn btn-primary" type="submit">Сохранить изменения</button>
+        </form>
+
+        <section class="card profile-password-card">
+            <div class="section-head">
+                <div>
+                    <h3>Пароль</h3>
+                    {% if request.user.has_usable_password and request.user.email_is_verified %}
+                        <p class="muted">Смена пароля подтверждается кодом из письма.</p>
+                    {% elif request.user.has_usable_password %}
+                        <p class="muted">Подтвердите email, чтобы включить безопасную смену пароля.</p>
+                    {% else %}
+                        <p class="muted">Пароль можно задать через код от оператора.</p>
                     {% endif %}
                 </div>
-                {% if email_edit_mode %}
-                    <input type="hidden" name="edit_email" value="1">
-                {% endif %}
-                {{ form.email }}
-                {% if request.user.email_is_verified and email_edit_mode %}
-                    <div class="field-hint">После сохранения отправим код подтверждения на новый email.</div>
-                {% endif %}
-                {% for error in form.email.errors %}
-                    <div class="field-error">{{ error }}</div>
-                {% endfor %}
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.telegram.id_for_label }}">{{ form.telegram.label }}</label>
-                {{ form.telegram }}
-                {% for error in form.telegram.errors %}
-                    <div class="field-error">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-            <div class="form-field">
-                <label>{{ form.phone.label }}</label>
-                {{ form.phone }}
-            </div>
-        </div>
-
-        <button class="btn btn-primary" type="submit">Сохранить изменения</button>
-    </form>
+            {% if not request.user.has_usable_password %}
+                <a href="{% url 'account-claim' %}" class="btn btn-secondary btn-sm">Задать пароль</a>
+            {% elif not request.user.email_is_verified %}
+                <span class="field-hint">Сначала подтвердите email в личных данных.</span>
+            {% elif pending_password_code %}
+                <form method="post" action="{% url 'password-change-confirm' %}" class="password-change-grid">
+                    {% csrf_token %}
+                    {% if password_change_form.non_field_errors %}
+                        <div class="form-errors password-form-errors">
+                            {% for error in password_change_form.non_field_errors %}
+                                <div class="field-error">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="form-field">
+                        <label for="{{ password_change_form.current_password.id_for_label }}">{{ password_change_form.current_password.label }}</label>
+                        {{ password_change_form.current_password }}
+                        {% for error in password_change_form.current_password.errors %}
+                            <div class="field-error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ password_change_form.code.id_for_label }}">{{ password_change_form.code.label }}</label>
+                        {{ password_change_form.code }}
+                        {% for error in password_change_form.code.errors %}
+                            <div class="field-error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ password_change_form.password1.id_for_label }}">{{ password_change_form.password1.label }}</label>
+                        {{ password_change_form.password1 }}
+                        {% for error in password_change_form.password1.errors %}
+                            <div class="field-error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="form-field">
+                        <label for="{{ password_change_form.password2.id_for_label }}">{{ password_change_form.password2.label }}</label>
+                        {{ password_change_form.password2 }}
+                        {% for error in password_change_form.password2.errors %}
+                            <div class="field-error">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="password-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">Сменить пароль</button>
+                    </div>
+                </form>
+                <div class="email-secondary-actions profile-secondary-actions">
+                    <form method="post" action="{% url 'password-change-start' %}" class="inline-form">
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="btn btn-secondary btn-sm"
+                            data-countdown-button
+                            data-countdown-seconds="{{ pending_password_resend_wait|default:0 }}"
+                            data-countdown-label="Отправить код еще раз"
+                            {% if pending_password_resend_wait %}disabled{% endif %}
+                        >
+                            {% if pending_password_resend_wait %}
+                                Повторно через {{ pending_password_resend_wait }} сек.
+                            {% else %}
+                                Отправить код еще раз
+                            {% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'password-change-cancel' %}" class="inline-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary btn-sm">Отменить</button>
+                    </form>
+                </div>
+            {% else %}
+                <form method="post" action="{% url 'password-change-start' %}" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm">Сменить пароль</button>
+                </form>
+            {% endif %}
+        </section>
+    </div>
 
     <aside class="profile-side">
         <section class="card compact-card">

@@ -3,7 +3,7 @@ import secrets
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.mail import send_mail
@@ -13,8 +13,15 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, FormView, ListView, UpdateView
 
-from .forms import AccountClaimForm, EmailVerificationForm, ProfileForm, UserLoginForm, UserRegisterForm
-from .models import EmailVerificationCode, User, UserNotification
+from .forms import (
+    AccountClaimForm,
+    EmailVerificationForm,
+    PasswordChangeByEmailForm,
+    ProfileForm,
+    UserLoginForm,
+    UserRegisterForm,
+)
+from .models import EmailVerificationCode, PasswordChangeCode, User, UserNotification
 from .vk_oauth import VKOAuthError, build_authorize_url, exchange_code, get_user_profile
 from integrations.vk_notifications import send_vk_message
 
@@ -97,12 +104,55 @@ def send_email_verification_code(user, email):
     return True
 
 
+def send_password_change_code(user):
+    password_code, raw_code = PasswordChangeCode.create_for_user(user)
+    try:
+        sent_count = send_mail(
+            subject="ВелоРент: код смены пароля",
+            message=(
+                f"Код смены пароля: {raw_code}\n\n"
+                f"Код действует {settings.PASSWORD_CHANGE_CODE_TTL_MINUTES} минут.\n"
+                "Если вы не запрашивали смену пароля, не сообщайте этот код никому."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        password_code.mark_used()
+        return False
+    if sent_count <= 0:
+        password_code.mark_used()
+        return False
+    return True
+
+
 def email_resend_wait_seconds(verification_code):
     if not verification_code:
         return 0
     available_at = verification_code.created_at + timedelta(seconds=settings.EMAIL_VERIFICATION_RESEND_SECONDS)
     remaining = int((available_at - timezone.now()).total_seconds())
     return max(remaining, 0)
+
+
+def password_resend_wait_seconds(password_code):
+    if not password_code:
+        return 0
+    available_at = password_code.created_at + timedelta(seconds=settings.PASSWORD_CHANGE_RESEND_SECONDS)
+    remaining = int((available_at - timezone.now()).total_seconds())
+    return max(remaining, 0)
+
+
+def get_pending_password_change_code(user):
+    return (
+        user.password_change_codes
+        .filter(
+            used_at__isnull=True,
+            expires_at__gte=timezone.now(),
+            attempts__lt=settings.PASSWORD_CHANGE_CODE_MAX_ATTEMPTS,
+        )
+        .first()
+    )
 
 
 def email_verification_context(request, form=None, pending_code=None):
@@ -115,12 +165,16 @@ def email_verification_context(request, form=None, pending_code=None):
         )
         .first()
     )
+    pending_password_code = get_pending_password_change_code(request.user)
     return {
         'form': ProfileForm(instance=request.user, allow_email_edit=True),
         'email_verification_form': form or EmailVerificationForm(user=request.user),
         'pending_email_code': pending_code,
         'pending_email_resend_wait': email_resend_wait_seconds(pending_code),
         'email_edit_mode': True,
+        'password_change_form': PasswordChangeByEmailForm(user=request.user),
+        'pending_password_code': pending_password_code,
+        'pending_password_resend_wait': password_resend_wait_seconds(pending_password_code),
         'vk_community_url': settings.VK_COMMUNITY_URL,
         'vk_group_token_present': bool(settings.VK_GROUP_TOKEN),
     }
@@ -398,10 +452,14 @@ class ProfileView(LoginRequiredMixin, UpdateView):
         context['vk_community_url'] = settings.VK_COMMUNITY_URL
         context['vk_group_token_present'] = bool(settings.VK_GROUP_TOKEN)
         pending_email_code = self.get_pending_email_code()
+        pending_password_code = get_pending_password_change_code(self.request.user)
         context['pending_email_code'] = pending_email_code
         context['pending_email_resend_wait'] = email_resend_wait_seconds(pending_email_code)
+        context['pending_password_code'] = pending_password_code
+        context['pending_password_resend_wait'] = password_resend_wait_seconds(pending_password_code)
         context['email_edit_mode'] = self.email_edit_mode()
         context.setdefault('email_verification_form', EmailVerificationForm(user=self.request.user))
+        context.setdefault('password_change_form', PasswordChangeByEmailForm(user=self.request.user))
         return context
 
     def form_valid(self, form):
@@ -500,6 +558,66 @@ class EmailVerificationCancelView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         request.user.email_verification_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
         messages.success(request, "Подтверждение email отменено.")
+        return redirect('profile')
+
+
+class PasswordChangeStartView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        pending_code = get_pending_password_change_code(user)
+
+        if not user.has_usable_password():
+            messages.warning(request, "Сначала задайте пароль через код от оператора.")
+            return redirect('profile')
+
+        if not user.email_is_verified:
+            messages.warning(request, "Для смены пароля сначала подтвердите email.")
+            return redirect('profile')
+
+        wait_seconds = password_resend_wait_seconds(pending_code)
+        if pending_code and wait_seconds > 0:
+            messages.warning(request, f"Новый код можно отправить через {wait_seconds} сек.")
+            return redirect('profile')
+
+        sent = send_password_change_code(user)
+        if sent:
+            messages.info(request, f"Код смены пароля отправлен на {user.email}.")
+        else:
+            messages.error(request, "Не удалось отправить код. Проверьте настройки почты и попробуйте позже.")
+        return redirect('profile')
+
+
+class PasswordChangeConfirmView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        form = PasswordChangeByEmailForm(request.POST, user=request.user)
+        if not form.is_valid():
+            pending_email_code = (
+                request.user.email_verification_codes
+                .filter(
+                    used_at__isnull=True,
+                    expires_at__gte=timezone.now(),
+                    attempts__lt=settings.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+                )
+                .first()
+            )
+            context = email_verification_context(request, pending_code=pending_email_code)
+            context['password_change_form'] = form
+            return render(request, 'accounts/profile.html', context)
+
+        user = request.user
+        user.set_password(form.cleaned_data["password1"])
+        user.save(update_fields=["password"])
+        form.password_code.mark_used()
+        user.password_change_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
+        update_session_auth_hash(request, user)
+        messages.success(request, "Пароль изменен.")
+        return redirect('profile')
+
+
+class PasswordChangeCancelView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        request.user.password_change_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
+        messages.success(request, "Смена пароля отменена.")
         return redirect('profile')
 
 

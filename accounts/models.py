@@ -216,6 +216,56 @@ class EmailVerificationCode(models.Model):
         return verification_code, raw_code
 
 
+class PasswordChangeCode(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="password_change_codes",
+        verbose_name="Пользователь",
+    )
+    code_hash = models.CharField("Hash кода", max_length=128)
+    expires_at = models.DateTimeField("Действует до")
+    used_at = models.DateTimeField("Использован", null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField("Попытки", default=0)
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Код смены пароля"
+        verbose_name_plural = "Коды смены пароля"
+
+    def __str__(self):
+        return f"{self.user} / {self.created_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def is_active(self):
+        return (
+            self.used_at is None
+            and self.expires_at >= timezone.now()
+            and self.attempts < settings.PASSWORD_CHANGE_CODE_MAX_ATTEMPTS
+        )
+
+    def check_code(self, raw_code):
+        return check_password(raw_code, self.code_hash)
+
+    def mark_used(self):
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
+    @classmethod
+    def create_for_user(cls, user):
+        now = timezone.now()
+        cls.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+
+        raw_code = f"{secrets.randbelow(1000000):06d}"
+        password_code = cls.objects.create(
+            user=user,
+            code_hash=make_password(raw_code),
+            expires_at=now + timedelta(minutes=settings.PASSWORD_CHANGE_CODE_TTL_MINUTES),
+        )
+        return password_code, raw_code
+
+
 class UserNotification(models.Model):
     class Level(models.TextChoices):
         INFO = "info", "Информация"

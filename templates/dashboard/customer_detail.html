@@ -45,6 +45,41 @@
     </div>
 </section>
 
+{% if customer_access_code_notice %}
+<section class="account-code-card" style="margin-bottom: 20px;">
+    <div>
+        <span>Код для задания пароля</span>
+        <strong>{{ customer_access_code_notice.code }}</strong>
+        <p>
+            Покажите код клиенту лично. Код действует {{ customer_access_code_notice.ttl_minutes }} минут.
+            Клиент вводит его на странице «Задать пароль».
+        </p>
+        <a href="{% url 'account-claim' %}">Открыть страницу задания пароля</a>
+    </div>
+</section>
+{% endif %}
+
+<section class="card" style="margin-bottom: 20px;">
+    <div class="section-head">
+        <div>
+            <h3>Доступ к аккаунту</h3>
+            {% if customer.has_usable_password %}
+                <p class="muted">Аккаунт активирован. Смена пароля доступна клиенту через подтвержденный email.</p>
+            {% else %}
+                <p class="muted">Клиент создан оператором и еще не задавал пароль.</p>
+            {% endif %}
+        </div>
+        {% if customer.has_usable_password %}
+            <span class="status-badge status-success">Активирован</span>
+        {% else %}
+            <form method="post" action="{% url 'operator-customer-access-code' customer.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm">Выдать код</button>
+            </form>
+        {% endif %}
+    </div>
+</section>
+
 <section class="detail-stack">
     <details class="card operator-collapse">
         <summary>Данные клиента</summary>

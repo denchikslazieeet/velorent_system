@@ -789,6 +789,37 @@ button:disabled,
     align-items: center;
 }
 
+.stacked-form {
+    display: grid;
+    gap: 12px;
+}
+
+.stacked-form .btn {
+    width: fit-content;
+}
+
+.password-change-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    align-items: start;
+}
+
+.password-form-errors,
+.password-actions {
+    grid-column: 1 / -1;
+}
+
+.password-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.profile-secondary-actions {
+    margin-top: 12px;
+}
+
 .upcoming-booking-card {
     display: flex;
     align-items: center;
@@ -2391,19 +2422,41 @@ input[type="radio"] {
 
 .profile-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
     gap: 20px;
     align-items: start;
 }
 
-.profile-main-card,
+.profile-main-stack,
 .profile-side {
     display: grid;
-    gap: 18px;
+    gap: 16px;
 }
 
 .profile-main-card .btn {
     justify-self: start;
+}
+
+.profile-password-card {
+    display: grid;
+    gap: 14px;
+}
+
+.profile-password-card .section-head {
+    margin-bottom: 0;
+}
+
+.profile-side .compact-card {
+    padding: 18px;
+}
+
+.profile-side .compact-card .section-head {
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.profile-side .compact-card p {
+    margin-bottom: 0;
 }
 
 .terms-layout {
@@ -2474,6 +2527,7 @@ input[type="radio"] {
     .operator-action-grid,
     .priority-grid,
     .profile-layout,
+    .password-change-grid,
     .terms-layout {
         grid-template-columns: 1fr;
     }

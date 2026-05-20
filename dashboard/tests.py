@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import AccountAccessCode, User
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
 from rentals.models import Booking, Rental
 
@@ -77,3 +77,35 @@ class OperatorDashboardTests(TestCase):
         shown_numbers = [booking.number for booking in response.context["recent_bookings"]]
         self.assertEqual(response.context["current_quick"], "all")
         self.assertIn(completed_booking.number, shown_numbers)
+
+    def test_operator_can_generate_account_code_from_customer_card(self):
+        customer = User.objects.create_user(
+            username="phone-customer",
+            phone="79960000001",
+            role=User.Role.CUSTOMER,
+        )
+        customer.set_unusable_password()
+        customer.save(update_fields=["password"])
+        self.client.force_login(self.operator)
+
+        response = self.client.post(
+            reverse("operator-customer-access-code", kwargs={"pk": customer.pk}),
+            follow=True,
+        )
+
+        self.assertEqual(AccountAccessCode.objects.filter(user=customer, used_at__isnull=True).count(), 1)
+        self.assertContains(response, "Код для задания пароля")
+
+    def test_operator_cannot_generate_account_code_for_activated_customer(self):
+        customer = User.objects.create_user(
+            username="active-customer",
+            phone="79960000002",
+            role=User.Role.CUSTOMER,
+            password="12345678",
+        )
+        self.client.force_login(self.operator)
+
+        response = self.client.post(reverse("operator-customer-access-code", kwargs={"pk": customer.pk}))
+
+        self.assertRedirects(response, reverse("operator-customer-detail", kwargs={"pk": customer.pk}))
+        self.assertFalse(AccountAccessCode.objects.filter(user=customer).exists())

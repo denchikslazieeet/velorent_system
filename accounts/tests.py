@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .forms import AccountClaimForm
-from .models import AccountAccessCode, EmailVerificationCode, User, UserNotification
+from .models import AccountAccessCode, EmailVerificationCode, PasswordChangeCode, User, UserNotification
 from catalog.models import Bike, BikeCategory, PickupLocation, Tariff
 from integrations.vk_notifications import notify_booking_event, send_vk_message
 from rentals.models import Booking
@@ -225,6 +225,54 @@ class EmailVerificationTests(TestCase):
             user.email_verification_codes.filter(used_at__isnull=True).first().email,
             "new@example.com",
         )
+
+
+class PasswordChangeByEmailTests(TestCase):
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_verified_customer_can_change_password_with_email_code(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            email="customer@example.com",
+            email_verified_at=timezone.now(),
+            password="OldPass123",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("password-change-start"))
+
+        self.assertRedirects(response, reverse("profile"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("код смены пароля", mail.outbox[0].subject.lower())
+        raw_code = re.search(r"\b\d{6}\b", mail.outbox[0].body).group(0)
+
+        response = self.client.post(reverse("password-change-confirm"), {
+            "current_password": "OldPass123",
+            "code": raw_code,
+            "password1": "NewPass123",
+            "password2": "NewPass123",
+        })
+
+        self.assertRedirects(response, reverse("profile"))
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("NewPass123"))
+        self.assertFalse(PasswordChangeCode.objects.filter(user=user, used_at__isnull=True).exists())
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_password_change_requires_verified_email(self):
+        user = User.objects.create_user(
+            username="customer",
+            phone="79960000001",
+            email="customer@example.com",
+            password="OldPass123",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("password-change-start"))
+
+        self.assertRedirects(response, reverse("profile"))
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(PasswordChangeCode.objects.filter(user=user).exists())
 
 
 class VKOAuthViewTests(TestCase):
