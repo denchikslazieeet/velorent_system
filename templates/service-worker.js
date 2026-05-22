@@ -1,9 +1,9 @@
 {% load static %}
-const CACHE_NAME = "velorent-pwa-v28";
+const CACHE_NAME = "velorent-pwa-v29";
 const OFFLINE_URL = "{% url 'offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "{% static 'css/style.css' %}?v=20260514-3",
+  "{% static 'css/style.css' %}?v=20260522-1",
   "{% static 'img/velorent-icon.svg' %}",
   "{% static 'img/velorent-logo.svg' %}",
   "{% static 'img/page-bike-bg.png' %}",
@@ -38,6 +38,17 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  if (url.origin === self.location.origin && url.pathname === "/static/css/style.css") {
+    event.respondWith(
+      fetch(event.request, { cache: "no-cache" }).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request))
     );
     return;
   }
