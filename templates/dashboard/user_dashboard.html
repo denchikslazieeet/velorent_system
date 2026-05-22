@@ -62,7 +62,10 @@
             <a href="{% url 'booking-detail' booking.pk %}" class="booking-list-main">
                 <strong>{{ booking.number }}</strong>
                 <span>{{ booking.bike.title }}</span>
-                <small>{{ booking.start_at|date:"d.m.Y H:i" }}</small>
+                <small class="booking-date-pill" aria-label="Дата брони">
+                    <span>Дата</span>
+                    {{ booking.start_at|date:"d.m.Y H:i" }}
+                </small>
             </a>
             <span class="status-badge status-{{ booking.status }}">
                 {{ booking.get_status_display }}

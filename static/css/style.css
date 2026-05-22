@@ -1552,6 +1552,30 @@ input[type="radio"] {
     color: var(--muted);
 }
 
+.booking-date-pill {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 6px 10px;
+    border: 1px solid rgba(125, 184, 255, 0.22);
+    border-radius: 9px;
+    background: rgba(125, 184, 255, 0.08);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.booking-date-pill span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .booking-list-main:hover strong,
 .booking-list-main:hover span {
     color: var(--accent);
