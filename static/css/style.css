@@ -1518,6 +1518,45 @@ input[type="radio"] {
     font-size: 14px;
 }
 
+.booking-list-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 13px 0;
+}
+
+.booking-list-main {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.55fr) minmax(160px, 1fr) minmax(130px, 0.75fr);
+    gap: 16px;
+    align-items: center;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+}
+
+.booking-list-main strong {
+    text-align: left;
+}
+
+.booking-list-main span,
+.booking-list-main small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.booking-list-main small {
+    color: var(--muted);
+}
+
+.booking-list-main:hover strong,
+.booking-list-main:hover span {
+    color: var(--accent);
+}
+
 .hero-centered {
     position: relative;
     overflow: hidden;
@@ -1725,6 +1764,16 @@ input[type="radio"] {
 
     .list-row strong {
         text-align: left;
+    }
+
+    .booking-list-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .booking-list-main {
+        grid-template-columns: 1fr;
+        gap: 4px;
     }
 
     .price-line {

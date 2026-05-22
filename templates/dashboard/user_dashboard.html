@@ -58,12 +58,12 @@
     </div>
 
     {% for booking in bookings %}
-        <div class="list-row compact-row">
-            <div class="row-main">
+        <div class="list-row compact-row booking-list-row">
+            <a href="{% url 'booking-detail' booking.pk %}" class="booking-list-main">
                 <strong>{{ booking.number }}</strong>
-                <small>{{ booking.bike.title }}</small>
+                <span>{{ booking.bike.title }}</span>
                 <small>{{ booking.start_at|date:"d.m.Y H:i" }}</small>
-            </div>
+            </a>
             <span class="status-badge status-{{ booking.status }}">
                 {{ booking.get_status_display }}
             </span>
