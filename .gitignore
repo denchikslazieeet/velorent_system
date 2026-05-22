@@ -22,6 +22,10 @@ ngrok.exe
 media/*
 !media/bikes/
 !media/bikes/*.svg
+!media/bikes/*.jpg
+!media/bikes/*.jpeg
+!media/bikes/*.png
+!media/bikes/*.webp
 
 # OS/editor
 .DS_Store

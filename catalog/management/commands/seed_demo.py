@@ -392,6 +392,12 @@ class Command(BaseCommand):
                 build_bike_svg(item["title"], item["color"], item["accent"]),
                 encoding="utf-8",
             )
+            existing_bike = Bike.objects.filter(serial_number=item["serial"]).first()
+            photo_name = f"bikes/{image_name}"
+            if existing_bike and existing_bike.photo:
+                current_photo = existing_bike.photo.name
+                if not current_photo.lower().endswith(".svg"):
+                    photo_name = current_photo
 
             Bike.objects.update_or_create(
                 serial_number=item["serial"],
@@ -406,7 +412,7 @@ class Command(BaseCommand):
                     "color": item["color"],
                     "status": Bike.Status.AVAILABLE,
                     "condition_notes": "ТО пройдено, велосипед готов к выдаче.",
-                    "photo": f"bikes/{image_name}",
+                    "photo": photo_name,
                     "description": item["description"],
                 },
             )
