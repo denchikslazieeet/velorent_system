@@ -599,6 +599,28 @@ class ConfirmBookingView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
             messages.warning(request, 'Подтвердить можно только новую бронь.')
             return redirect('operator-dashboard')
 
+        if booking.bike.status in {Bike.Status.SERVICE, Bike.Status.RETIRED, Bike.Status.IN_RENT}:
+            messages.warning(
+                request,
+                'Велосипед сейчас недоступен для подтверждения брони.'
+            )
+            return redirect('booking-detail', pk=booking.pk)
+
+        conflict_exists = Booking.objects.filter(
+            bike=booking.bike,
+            status__in=[
+                Booking.Status.PENDING,
+                Booking.Status.CONFIRMED,
+                Booking.Status.ACTIVE,
+            ],
+            start_at__lt=booking.end_at,
+            end_at__gt=booking.start_at,
+        ).exclude(pk=booking.pk).exists()
+
+        if conflict_exists:
+            messages.warning(request, 'На этот период уже есть другая бронь.')
+            return redirect('booking-detail', pk=booking.pk)
+
         booking.status = Booking.Status.CONFIRMED
         booking.bike.status = booking.bike.Status.RESERVED
         booking.bike.save(update_fields=['status'])

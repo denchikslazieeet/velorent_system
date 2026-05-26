@@ -384,6 +384,12 @@ class Command(BaseCommand):
 
         image_dir = settings.MEDIA_ROOT / "bikes"
         image_dir.mkdir(parents=True, exist_ok=True)
+        real_photo_names = [
+            image_file.name
+            for image_file in sorted(image_dir.iterdir())
+            if image_file.is_file()
+            and image_file.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+        ]
 
         for index, item in enumerate(BIKES, start=1):
             image_name = f"{item['slug']}.svg"
@@ -394,6 +400,9 @@ class Command(BaseCommand):
             )
             existing_bike = Bike.objects.filter(serial_number=item["serial"]).first()
             photo_name = f"bikes/{image_name}"
+            if real_photo_names:
+                real_photo_name = real_photo_names[(index - 1) % len(real_photo_names)]
+                photo_name = f"bikes/{real_photo_name}"
             if existing_bike and existing_bike.photo:
                 current_photo = existing_bike.photo.name
                 if not current_photo.lower().endswith(".svg"):
