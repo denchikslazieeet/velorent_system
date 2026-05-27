@@ -325,6 +325,38 @@ class Command(BaseCommand):
         operator.set_password("operator123")
         operator.save()
 
+        phone_operator_phone = "79141301400"
+        phone_operator = (
+            User.objects.filter(phone=phone_operator_phone).first()
+            or User.objects.filter(username=phone_operator_phone).first()
+            or User(username=phone_operator_phone)
+        )
+        phone_operator.username = phone_operator_phone
+        phone_operator.phone = phone_operator_phone
+        phone_operator.role = User.Role.OPERATOR
+        phone_operator.email = ""
+        phone_operator.first_name = "Демо"
+        phone_operator.last_name = "Оператор"
+        phone_operator.is_staff = True
+        phone_operator.set_password(CUSTOMER_PASSWORD)
+        phone_operator.save()
+
+        phone_customer_phone = "79244702232"
+        phone_customer = (
+            User.objects.filter(phone=phone_customer_phone).first()
+            or User.objects.filter(username=phone_customer_phone).first()
+            or User(username=phone_customer_phone)
+        )
+        phone_customer.username = phone_customer_phone
+        phone_customer.phone = phone_customer_phone
+        phone_customer.role = User.Role.CUSTOMER
+        phone_customer.email = ""
+        phone_customer.first_name = "Илья"
+        phone_customer.last_name = "Стреколовский"
+        phone_customer.is_staff = False
+        phone_customer.set_password(CUSTOMER_PASSWORD)
+        phone_customer.save()
+
         now = timezone.now()
         for username, first_name, last_name, phone, email, telegram, document_last4 in CUSTOMERS:
             is_verified = username != "customer04"

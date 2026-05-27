@@ -79,9 +79,13 @@ echo http://127.0.0.1:8000/
 echo.
 echo Operator login: operator
 echo Operator password: operator123
+echo Operator phone login: 89141301400
+echo Operator phone password: Mechabear1001
 echo.
 echo Demo customers: customer01 ... customer10
 echo Customer password: Mechabear1001
+echo Customer phone login: 89244702232
+echo Customer phone password: Mechabear1001
 echo.
 echo To stop the website, close this window or press Ctrl+C.
 echo.
