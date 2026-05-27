@@ -16,6 +16,10 @@ from rentals.services import calculate_booking_quote
 CUSTOMER_PASSWORD = "Mechabear1001"
 
 
+def keep_or_set(current_value, fallback):
+    return current_value if current_value not in (None, "") else fallback
+
+
 CUSTOMERS = [
     ("customer01", "Алина", "Морозова", "79961543021", "alina.morozova@example.com", "@alina_ride", "1482"),
     ("customer02", "Даниил", "Ковалев", "79964281735", "daniil.kovalev@example.com", "@dan_kov", "7319"),
@@ -334,9 +338,8 @@ class Command(BaseCommand):
         phone_operator.username = phone_operator_phone
         phone_operator.phone = phone_operator_phone
         phone_operator.role = User.Role.OPERATOR
-        phone_operator.email = ""
-        phone_operator.first_name = "Демо"
-        phone_operator.last_name = "Оператор"
+        phone_operator.first_name = keep_or_set(phone_operator.first_name, "Демо")
+        phone_operator.last_name = keep_or_set(phone_operator.last_name, "Оператор")
         phone_operator.is_staff = True
         phone_operator.set_password(CUSTOMER_PASSWORD)
         phone_operator.save()
@@ -350,9 +353,8 @@ class Command(BaseCommand):
         phone_customer.username = phone_customer_phone
         phone_customer.phone = phone_customer_phone
         phone_customer.role = User.Role.CUSTOMER
-        phone_customer.email = ""
-        phone_customer.first_name = "Илья"
-        phone_customer.last_name = "Стреколовский"
+        phone_customer.first_name = keep_or_set(phone_customer.first_name, "Илья")
+        phone_customer.last_name = keep_or_set(phone_customer.last_name, "Стреколовский")
         phone_customer.is_staff = False
         phone_customer.set_password(CUSTOMER_PASSWORD)
         phone_customer.save()
@@ -360,15 +362,11 @@ class Command(BaseCommand):
         now = timezone.now()
         for username, first_name, last_name, phone, email, telegram, document_last4 in CUSTOMERS:
             is_verified = username != "customer04"
-            user, _ = User.objects.update_or_create(
+            user, created = User.objects.update_or_create(
                 username=username,
                 defaults={
                     "role": User.Role.CUSTOMER,
-                    "first_name": first_name,
-                    "last_name": last_name,
                     "phone": phone,
-                    "email": email,
-                    "telegram": telegram,
                     "terms_accepted": True,
                     "terms_accepted_at": now,
                     "personal_data_consent": True,
@@ -380,6 +378,16 @@ class Command(BaseCommand):
                     "document_verified_by": operator if is_verified else None,
                 },
             )
+            if created:
+                user.first_name = first_name
+                user.last_name = last_name
+                user.email = email
+                user.telegram = telegram
+            else:
+                user.first_name = keep_or_set(user.first_name, first_name)
+                user.last_name = keep_or_set(user.last_name, last_name)
+                user.email = keep_or_set(user.email, email)
+                user.telegram = keep_or_set(user.telegram, telegram)
             user.set_password(CUSTOMER_PASSWORD)
             user.save()
 
