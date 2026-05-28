@@ -12,6 +12,7 @@ env/
 .env
 db.sqlite3
 staticfiles/
+backups/
 *.log
 
 # Local tunnel binaries/tools

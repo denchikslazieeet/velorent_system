@@ -1,12 +1,34 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env", override=True)
+load_dotenv(BASE_DIR / ".env", override=False)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key")
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+def env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_int(name, default=0):
+    value = os.getenv(name)
+    if value in (None, ""):
+        return default
+    return int(value)
+
+
+DEBUG = env_bool("DEBUG", True)
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "unsafe-dev-secret-key-change-me"
+    else:
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG=False.")
+if not DEBUG and SECRET_KEY in {"unsafe-secret-key", "unsafe-dev-secret-key-change-me", "change-me"}:
+    raise ImproperlyConfigured("Set a strong SECRET_KEY before running with DEBUG=False.")
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
@@ -139,6 +161,16 @@ REST_FRAMEWORK = {
 
 ONEC_API_URL = os.getenv("ONEC_API_URL", "")
 ONEC_API_TOKEN = os.getenv("ONEC_API_TOKEN", "")
+ONEC_API_TIMEOUT_SECONDS = env_int("ONEC_API_TIMEOUT_SECONDS", 10)
+ONEC_SYNC_IMMEDIATE = env_bool("ONEC_SYNC_IMMEDIATE", False)
+
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", not DEBUG)
+SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 0 if DEBUG else 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if env_bool("USE_X_FORWARDED_PROTO", False) else None
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"

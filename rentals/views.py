@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -282,35 +283,37 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
         return self.render_to_response(context)
 
     def form_valid(self, form):
-        booking = form.save(commit=False)
-        booking.number = make_booking_number()
-        booking.customer = self.request.user
-        booking.bike = self.bike
-        booking.tariff = self.bike.tariff
+        with transaction.atomic():
+            bike = Bike.objects.select_for_update().select_related('tariff').get(pk=self.bike.pk)
+            booking = form.save(commit=False)
+            booking.number = make_booking_number()
+            booking.customer = self.request.user
+            booking.bike = bike
+            booking.tariff = bike.tariff
 
-        if not bike_available_for_period(self.bike, booking.start_at, booking.end_at):
-            form.add_error(None, 'Выбранный велосипед недоступен в этот период.')
-            return self.form_invalid(form)
+            if not bike_available_for_period(bike, booking.start_at, booking.end_at):
+                form.add_error(None, 'Выбранный велосипед недоступен в этот период.')
+                return self.form_invalid(form)
 
-        quoted_price, deposit_amount = calculate_booking_quote(
-            booking.start_at,
-            booking.end_at,
-            self.bike.tariff,
-            customer=self.request.user
-        )
-        booking.quoted_price = quoted_price
-        booking.deposit_amount = deposit_amount
-        booking.save()
+            quoted_price, deposit_amount = calculate_booking_quote(
+                booking.start_at,
+                booking.end_at,
+                bike.tariff,
+                customer=self.request.user
+            )
+            booking.quoted_price = quoted_price
+            booking.deposit_amount = deposit_amount
+            booking.save()
 
-        if booking.customer.next_booking_hourly_surcharge > 0:
-            booking.customer.next_booking_hourly_surcharge = 0
-            booking.customer.next_booking_penalty_reason = ""
-            booking.customer.save(update_fields=[
-                "next_booking_hourly_surcharge",
-                "next_booking_penalty_reason",
-            ])
+            if booking.customer.next_booking_hourly_surcharge > 0:
+                booking.customer.next_booking_hourly_surcharge = 0
+                booking.customer.next_booking_penalty_reason = ""
+                booking.customer.save(update_fields=[
+                    "next_booking_hourly_surcharge",
+                    "next_booking_penalty_reason",
+                ])
 
-        Rental.objects.create(booking=booking)
+            Rental.objects.create(booking=booking)
         queue_booking_sync(booking)
         notify_booking_event(booking, "created")
 
@@ -328,35 +331,38 @@ class OperatorBookingCreateView(LoginRequiredMixin, OperatorRequiredMixin, Creat
         return context
 
     def form_valid(self, form):
-        booking = form.save(commit=False)
-        booking.number = make_booking_number()
-        booking.customer = form.resolve_customer(created_by=self.request.user)
-        booking.bike = form.cleaned_data['bike']
-        booking.tariff = booking.bike.tariff
+        with transaction.atomic():
+            booking = form.save(commit=False)
+            booking.number = make_booking_number()
+            booking.customer = form.resolve_customer(created_by=self.request.user)
+            booking.bike = Bike.objects.select_for_update().select_related('tariff').get(
+                pk=form.cleaned_data['bike'].pk
+            )
+            booking.tariff = booking.bike.tariff
 
-        if not bike_available_for_period(booking.bike, booking.start_at, booking.end_at):
-            form.add_error('bike', 'Выбранный велосипед недоступен в этот период.')
-            return self.form_invalid(form)
+            if not bike_available_for_period(booking.bike, booking.start_at, booking.end_at):
+                form.add_error('bike', 'Выбранный велосипед недоступен в этот период.')
+                return self.form_invalid(form)
 
-        quoted_price, deposit_amount = calculate_booking_quote(
-            booking.start_at,
-            booking.end_at,
-            booking.bike.tariff,
-            customer=booking.customer
-        )
-        booking.quoted_price = quoted_price
-        booking.deposit_amount = deposit_amount
-        booking.save()
+            quoted_price, deposit_amount = calculate_booking_quote(
+                booking.start_at,
+                booking.end_at,
+                booking.bike.tariff,
+                customer=booking.customer
+            )
+            booking.quoted_price = quoted_price
+            booking.deposit_amount = deposit_amount
+            booking.save()
 
-        if booking.customer.next_booking_hourly_surcharge > 0:
-            booking.customer.next_booking_hourly_surcharge = 0
-            booking.customer.next_booking_penalty_reason = ""
-            booking.customer.save(update_fields=[
-                "next_booking_hourly_surcharge",
-                "next_booking_penalty_reason",
-            ])
+            if booking.customer.next_booking_hourly_surcharge > 0:
+                booking.customer.next_booking_hourly_surcharge = 0
+                booking.customer.next_booking_penalty_reason = ""
+                booking.customer.save(update_fields=[
+                    "next_booking_hourly_surcharge",
+                    "next_booking_penalty_reason",
+                ])
 
-        Rental.objects.create(booking=booking)
+            Rental.objects.create(booking=booking)
         queue_booking_sync(booking)
         notify_booking_event(booking, "created")
 
@@ -593,38 +599,43 @@ class ConfirmBookingView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
     model = Booking
 
     def post(self, request, *args, **kwargs):
-        booking = self.get_object()
-
-        if booking.status != Booking.Status.PENDING:
-            messages.warning(request, 'Подтвердить можно только новую бронь.')
-            return redirect('operator-dashboard')
-
-        if booking.bike.status in {Bike.Status.SERVICE, Bike.Status.RETIRED, Bike.Status.IN_RENT}:
-            messages.warning(
-                request,
-                'Велосипед сейчас недоступен для подтверждения брони.'
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike'),
+                pk=kwargs['pk'],
             )
-            return redirect('booking-detail', pk=booking.pk)
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
 
-        conflict_exists = Booking.objects.filter(
-            bike=booking.bike,
-            status__in=[
-                Booking.Status.PENDING,
-                Booking.Status.CONFIRMED,
-                Booking.Status.ACTIVE,
-            ],
-            start_at__lt=booking.end_at,
-            end_at__gt=booking.start_at,
-        ).exclude(pk=booking.pk).exists()
+            if booking.status != Booking.Status.PENDING:
+                messages.warning(request, 'Подтвердить можно только новую бронь.')
+                return redirect('operator-dashboard')
 
-        if conflict_exists:
-            messages.warning(request, 'На этот период уже есть другая бронь.')
-            return redirect('booking-detail', pk=booking.pk)
+            if booking.bike.status in {Bike.Status.SERVICE, Bike.Status.RETIRED, Bike.Status.IN_RENT}:
+                messages.warning(
+                    request,
+                    'Велосипед сейчас недоступен для подтверждения брони.'
+                )
+                return redirect('booking-detail', pk=booking.pk)
 
-        booking.status = Booking.Status.CONFIRMED
-        booking.bike.status = booking.bike.Status.RESERVED
-        booking.bike.save(update_fields=['status'])
-        booking.save(update_fields=['status', 'updated_at'])
+            conflict_exists = Booking.objects.filter(
+                bike=booking.bike,
+                status__in=[
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                    Booking.Status.ACTIVE,
+                ],
+                start_at__lt=booking.end_at,
+                end_at__gt=booking.start_at,
+            ).exclude(pk=booking.pk).exists()
+
+            if conflict_exists:
+                messages.warning(request, 'На этот период уже есть другая бронь.')
+                return redirect('booking-detail', pk=booking.pk)
+
+            booking.status = Booking.Status.CONFIRMED
+            booking.bike.status = booking.bike.Status.RESERVED
+            booking.bike.save(update_fields=['status'])
+            booking.save(update_fields=['status', 'updated_at'])
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "confirmed")
@@ -636,42 +647,51 @@ class IssueRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
     model = Booking
 
     def post(self, request, *args, **kwargs):
-        booking = self.get_object()
-
-        if booking.status != Booking.Status.CONFIRMED:
-            messages.warning(request, 'Выдать можно только подтверждённую бронь.')
-            return redirect('operator-dashboard')
-
-        if not booking.customer.document_verified:
-            messages.warning(
-                request,
-                'Нельзя выдать велосипед: документ клиента ещё не проверен оператором.'
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike', 'customer'),
+                pk=kwargs['pk'],
             )
-            return redirect('booking-detail', pk=booking.pk)
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
 
-        rental = booking.rental
-        rental.status = Rental.Status.ACTIVE
-        rental.issued_by = request.user
-        rental.actual_start_at = timezone.now()
-        rental.start_condition = request.POST.get('start_condition', '')
-        rental.save(update_fields=[
-            'status', 'issued_by', 'actual_start_at', 'start_condition', 'updated_at'
-        ])
+            if booking.status != Booking.Status.CONFIRMED:
+                messages.warning(request, 'Выдать можно только подтверждённую бронь.')
+                return redirect('operator-dashboard')
 
-        booking.status = Booking.Status.ACTIVE
-        booking.save(update_fields=['status', 'updated_at'])
+            if not booking.customer.document_verified:
+                messages.warning(
+                    request,
+                    'Нельзя выдать велосипед: документ клиента ещё не проверен оператором.'
+                )
+                return redirect('booking-detail', pk=booking.pk)
 
-        booking.bike.status = booking.bike.Status.IN_RENT
-        booking.bike.save(update_fields=['status'])
+            rental = Rental.objects.select_for_update().get(booking=booking)
+            if rental.status != Rental.Status.READY:
+                messages.warning(request, 'Аренда уже была выдана или закрыта.')
+                return redirect('booking-detail', pk=booking.pk)
 
-        if booking.deposit_amount:
-            Payment.objects.create(
-                booking=booking,
-                amount=booking.deposit_amount,
-                kind=Payment.Kind.DEPOSIT,
-                method=Payment.Method.CARD,
-                status=Payment.Status.PAID,
-            )
+            rental.status = Rental.Status.ACTIVE
+            rental.issued_by = request.user
+            rental.actual_start_at = timezone.now()
+            rental.start_condition = request.POST.get('start_condition', '')
+            rental.save(update_fields=[
+                'status', 'issued_by', 'actual_start_at', 'start_condition', 'updated_at'
+            ])
+
+            booking.status = Booking.Status.ACTIVE
+            booking.save(update_fields=['status', 'updated_at'])
+
+            booking.bike.status = booking.bike.Status.IN_RENT
+            booking.bike.save(update_fields=['status'])
+
+            if booking.deposit_amount:
+                Payment.objects.create(
+                    booking=booking,
+                    amount=booking.deposit_amount,
+                    kind=Payment.Kind.DEPOSIT,
+                    method=Payment.Method.CARD,
+                    status=Payment.Status.PAID,
+                )
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "issued")
@@ -683,49 +703,55 @@ class ReturnRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
     model = Booking
 
     def post(self, request, *args, **kwargs):
-        booking = self.get_object()
-        rental = booking.rental
-
-        if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
-            messages.warning(request, 'Завершить можно только активную аренду.')
-            return redirect('operator-dashboard')
-
-        actual_end_at = timezone.now()
-
-        try:
-            damage_fee = Decimal(request.POST.get('damage_fee') or "0")
-        except InvalidOperation:
-            damage_fee = Decimal("0")
-
-        rental.received_by = request.user
-        rental.actual_end_at = actual_end_at
-        rental.end_condition = request.POST.get('end_condition', '')
-        rental.damage_fee = damage_fee
-        rental.late_fee = compute_late_fee(booking, actual_end_at)
-        rental.extra_time_fee = Decimal("0")
-        rental.final_price = booking.quoted_price + rental.late_fee + rental.damage_fee
-        rental.status = Rental.Status.COMPLETED
-        rental.save()
-
-        booking.status = Booking.Status.COMPLETED
-        booking.save(update_fields=['status', 'updated_at'])
-
-        booking.bike.status = booking.bike.Status.AVAILABLE
-        booking.bike.save(update_fields=['status'])
-
-        existing_pending = booking.payments.filter(
-            kind=Payment.Kind.RENTAL,
-            status=Payment.Status.PENDING
-        ).exists()
-
-        if not existing_pending:
-            Payment.objects.create(
-                booking=booking,
-                amount=rental.final_price,
-                kind=Payment.Kind.RENTAL,
-                method=Payment.Method.CASH,
-                status=Payment.Status.PENDING,
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike'),
+                pk=kwargs['pk'],
             )
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
+            rental = Rental.objects.select_for_update().get(booking=booking)
+
+            if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
+                messages.warning(request, 'Завершить можно только активную аренду.')
+                return redirect('operator-dashboard')
+
+            actual_end_at = timezone.now()
+
+            try:
+                damage_fee = Decimal(request.POST.get('damage_fee') or "0")
+            except InvalidOperation:
+                damage_fee = Decimal("0")
+            damage_fee = max(damage_fee, Decimal("0"))
+
+            rental.received_by = request.user
+            rental.actual_end_at = actual_end_at
+            rental.end_condition = request.POST.get('end_condition', '')
+            rental.damage_fee = damage_fee
+            rental.late_fee = compute_late_fee(booking, actual_end_at)
+            rental.extra_time_fee = Decimal("0")
+            rental.final_price = booking.quoted_price + rental.late_fee + rental.damage_fee
+            rental.status = Rental.Status.COMPLETED
+            rental.save()
+
+            booking.status = Booking.Status.COMPLETED
+            booking.save(update_fields=['status', 'updated_at'])
+
+            booking.bike.status = booking.bike.Status.AVAILABLE
+            booking.bike.save(update_fields=['status'])
+
+            existing_pending = booking.payments.filter(
+                kind=Payment.Kind.RENTAL,
+                status=Payment.Status.PENDING
+            ).exists()
+
+            if not existing_pending:
+                Payment.objects.create(
+                    booking=booking,
+                    amount=rental.final_price,
+                    kind=Payment.Kind.RENTAL,
+                    method=Payment.Method.CASH,
+                    status=Payment.Status.PENDING,
+                )
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "completed")
@@ -740,55 +766,60 @@ class ExtendRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
     model = Booking
 
     def post(self, request, *args, **kwargs):
-        booking = self.get_object()
-        rental = booking.rental
-
-        if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
-            messages.warning(request, 'Продлить можно только активную аренду.')
-            return redirect('booking-detail', pk=booking.pk)
-
-        try:
-            extend_hours = int(request.POST.get('extend_hours') or "0")
-        except (TypeError, ValueError):
-            extend_hours = 0
-
-        if extend_hours < 1 or extend_hours > 24 * 7:
-            messages.warning(request, 'Укажите продление от 1 часа до 7 дней.')
-            return redirect('booking-detail', pk=booking.pk)
-
-        extension_start = max(booking.end_at, timezone.now())
-        new_end_at = extension_start + timedelta(hours=extend_hours)
-
-        conflict_exists = Booking.objects.filter(
-            bike=booking.bike,
-            status__in=[
-                Booking.Status.PENDING,
-                Booking.Status.CONFIRMED,
-                Booking.Status.ACTIVE,
-            ],
-            start_at__lt=new_end_at,
-            end_at__gt=booking.end_at,
-        ).exclude(pk=booking.pk).exists()
-
-        if conflict_exists:
-            messages.warning(
-                request,
-                'Продлить нельзя: на это время велосипед уже забронирован другим клиентом.'
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike', 'customer', 'tariff'),
+                pk=kwargs['pk'],
             )
-            return redirect('booking-detail', pk=booking.pk)
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
+            rental = Rental.objects.select_for_update().get(booking=booking)
 
-        previous_price = booking.quoted_price
-        quoted_price, _ = calculate_booking_quote(
-            booking.start_at,
-            new_end_at,
-            booking.tariff,
-            customer=booking.customer,
-        )
-        extension_price = max(quoted_price - previous_price, Decimal("0"))
+            if booking.status != Booking.Status.ACTIVE or rental.status != Rental.Status.ACTIVE:
+                messages.warning(request, 'Продлить можно только активную аренду.')
+                return redirect('booking-detail', pk=booking.pk)
 
-        booking.end_at = new_end_at
-        booking.quoted_price = quoted_price
-        booking.save(update_fields=['end_at', 'quoted_price', 'updated_at'])
+            try:
+                extend_hours = int(request.POST.get('extend_hours') or "0")
+            except (TypeError, ValueError):
+                extend_hours = 0
+
+            if extend_hours < 1 or extend_hours > 24 * 7:
+                messages.warning(request, 'Укажите продление от 1 часа до 7 дней.')
+                return redirect('booking-detail', pk=booking.pk)
+
+            extension_start = max(booking.end_at, timezone.now())
+            new_end_at = extension_start + timedelta(hours=extend_hours)
+
+            conflict_exists = Booking.objects.filter(
+                bike=booking.bike,
+                status__in=[
+                    Booking.Status.PENDING,
+                    Booking.Status.CONFIRMED,
+                    Booking.Status.ACTIVE,
+                ],
+                start_at__lt=new_end_at,
+                end_at__gt=booking.end_at,
+            ).exclude(pk=booking.pk).exists()
+
+            if conflict_exists:
+                messages.warning(
+                    request,
+                    'Продлить нельзя: на это время велосипед уже забронирован другим клиентом.'
+                )
+                return redirect('booking-detail', pk=booking.pk)
+
+            previous_price = booking.quoted_price
+            quoted_price, _ = calculate_booking_quote(
+                booking.start_at,
+                new_end_at,
+                booking.tariff,
+                customer=booking.customer,
+            )
+            extension_price = max(quoted_price - previous_price, Decimal("0"))
+
+            booking.end_at = new_end_at
+            booking.quoted_price = quoted_price
+            booking.save(update_fields=['end_at', 'quoted_price', 'updated_at'])
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "extended")
@@ -804,45 +835,46 @@ class ExtendRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
 
 class ConfirmRentalPaymentView(LoginRequiredMixin, OperatorRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
-        booking = get_object_or_404(
-            Booking.objects.select_related('rental'),
-            pk=pk
-        )
-
-        payment = booking.payments.filter(
-            kind=Payment.Kind.RENTAL,
-            status=Payment.Status.PENDING
-        ).order_by('-created_at').first()
-
-        if not payment:
-            messages.warning(request, 'Для этой брони нет ожидающего платежа.')
-            return redirect('booking-detail', pk=booking.pk)
-
-        method = request.POST.get('method') or Payment.Method.CASH
-        if method not in {
-            Payment.Method.CASH,
-            Payment.Method.CARD,
-            Payment.Method.ONLINE,
-        }:
-            method = Payment.Method.CASH
-
-        payment.method = method
-        payment.status = Payment.Status.PAID
-        payment.save(update_fields=['method', 'status'])
-
-        refund_exists = booking.payments.filter(
-            kind=Payment.Kind.REFUND,
-            status=Payment.Status.PAID
-        ).exists()
-
-        if booking.deposit_amount and not refund_exists:
-            Payment.objects.create(
-                booking=booking,
-                amount=booking.deposit_amount,
-                kind=Payment.Kind.REFUND,
-                method=method,
-                status=Payment.Status.PAID,
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update(),
+                pk=pk
             )
+
+            payment = booking.payments.select_for_update().filter(
+                kind=Payment.Kind.RENTAL,
+                status=Payment.Status.PENDING
+            ).order_by('-created_at').first()
+
+            if not payment:
+                messages.warning(request, 'Для этой брони нет ожидающего платежа.')
+                return redirect('booking-detail', pk=booking.pk)
+
+            method = request.POST.get('method') or Payment.Method.CASH
+            if method not in {
+                Payment.Method.CASH,
+                Payment.Method.CARD,
+                Payment.Method.ONLINE,
+            }:
+                method = Payment.Method.CASH
+
+            payment.method = method
+            payment.status = Payment.Status.PAID
+            payment.save(update_fields=['method', 'status'])
+
+            refund_exists = booking.payments.filter(
+                kind=Payment.Kind.REFUND,
+                status=Payment.Status.PAID
+            ).exists()
+
+            if booking.deposit_amount and not refund_exists:
+                Payment.objects.create(
+                    booking=booking,
+                    amount=booking.deposit_amount,
+                    kind=Payment.Kind.REFUND,
+                    method=method,
+                    status=Payment.Status.PAID,
+                )
 
         notify_booking_event(booking, "payment_paid")
         messages.success(request, f'Оплата по брони {booking.number} подтверждена.')
@@ -878,40 +910,47 @@ class CancelBookingView(LoginRequiredMixin, View):
         })
 
     def post(self, request, pk, *args, **kwargs):
-        booking = self.get_booking(pk)
-
         user = request.user
         is_operator = self.user_is_operator(user)
-
-        if not is_operator and booking.customer != user:
-            messages.error(request, 'У вас нет доступа к этой брони.')
-            return redirect('user-dashboard')
-
-        if booking.status not in {Booking.Status.PENDING, Booking.Status.CONFIRMED}:
-            messages.warning(request, 'Эту бронь уже нельзя отменить.')
-            return redirect('booking-detail', pk=booking.pk)
 
         cancellation_reason = "Бронь отменена клиентом."
         if is_operator:
             form = BookingCancelForm(request.POST)
             if not form.is_valid():
+                booking = self.get_booking(pk)
                 return render(request, self.template_name, {
                     "booking": booking,
                     "form": form,
                 })
             cancellation_reason = form.get_reason_text()
 
-        booking.status = Booking.Status.CANCELLED
-        booking.cancellation_reason = cancellation_reason
-        booking.save(update_fields=['status', 'cancellation_reason', 'updated_at'])
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike', 'customer'),
+                pk=pk,
+            )
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
 
-        if hasattr(booking, 'rental') and booking.rental.status == Rental.Status.READY:
-            booking.rental.status = Rental.Status.CANCELLED
-            booking.rental.save(update_fields=['status', 'updated_at'])
+            if not is_operator and booking.customer != user:
+                messages.error(request, 'У вас нет доступа к этой брони.')
+                return redirect('user-dashboard')
 
-        if booking.bike.status == booking.bike.Status.RESERVED:
-            booking.bike.status = booking.bike.Status.AVAILABLE
-            booking.bike.save(update_fields=['status'])
+            if booking.status not in {Booking.Status.PENDING, Booking.Status.CONFIRMED}:
+                messages.warning(request, 'Эту бронь уже нельзя отменить.')
+                return redirect('booking-detail', pk=booking.pk)
+
+            booking.status = Booking.Status.CANCELLED
+            booking.cancellation_reason = cancellation_reason
+            booking.save(update_fields=['status', 'cancellation_reason', 'updated_at'])
+
+            rental = Rental.objects.select_for_update().filter(booking=booking).first()
+            if rental and rental.status == Rental.Status.READY:
+                rental.status = Rental.Status.CANCELLED
+                rental.save(update_fields=['status', 'updated_at'])
+
+            if booking.bike.status == booking.bike.Status.RESERVED:
+                booking.bike.status = booking.bike.Status.AVAILABLE
+                booking.bike.save(update_fields=['status'])
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "cancelled")
@@ -936,23 +975,6 @@ class NoShowConfirmView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
 
 class MarkNoShowView(LoginRequiredMixin, OperatorRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
-        booking = get_object_or_404(
-            Booking.objects.select_related('bike', 'rental', 'customer'),
-            pk=pk
-        )
-
-        if booking.status not in {Booking.Status.PENDING, Booking.Status.CONFIRMED}:
-            messages.warning(request, 'Неявку можно отметить только для новой или подтверждённой брони.')
-            return redirect('booking-detail', pk=booking.pk)
-
-        allowed_no_show_time = booking.start_at + timedelta(minutes=15)
-        if timezone.now() < allowed_no_show_time:
-            messages.warning(
-                request,
-                'Неявку можно отметить только через 15 минут после запланированного начала аренды.'
-            )
-            return redirect('booking-detail', pk=booking.pk)
-
         try:
             surcharge = Decimal(request.POST.get("surcharge_per_hour") or "0")
         except InvalidOperation:
@@ -961,24 +983,44 @@ class MarkNoShowView(LoginRequiredMixin, OperatorRequiredMixin, View):
         if surcharge < 0:
             surcharge = Decimal("0")
 
-        booking.status = Booking.Status.EXPIRED
-        booking.save(update_fields=["status", "updated_at"])
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update().select_related('bike', 'customer'),
+                pk=pk
+            )
+            booking.bike = Bike.objects.select_for_update().get(pk=booking.bike_id)
 
-        if hasattr(booking, 'rental') and booking.rental.status == Rental.Status.READY:
-            booking.rental.status = Rental.Status.CANCELLED
-            booking.rental.save(update_fields=['status', 'updated_at'])
+            if booking.status not in {Booking.Status.PENDING, Booking.Status.CONFIRMED}:
+                messages.warning(request, 'Неявку можно отметить только для новой или подтверждённой брони.')
+                return redirect('booking-detail', pk=booking.pk)
 
-        if booking.bike.status == booking.bike.Status.RESERVED:
-            booking.bike.status = booking.bike.Status.AVAILABLE
-            booking.bike.save(update_fields=['status'])
+            allowed_no_show_time = booking.start_at + timedelta(minutes=15)
+            if timezone.now() < allowed_no_show_time:
+                messages.warning(
+                    request,
+                    'Неявку можно отметить только через 15 минут после запланированного начала аренды.'
+                )
+                return redirect('booking-detail', pk=booking.pk)
 
-        if surcharge > 0:
-            booking.customer.next_booking_hourly_surcharge = surcharge
-            booking.customer.next_booking_penalty_reason = f"Неявка по брони {booking.number}"
-            booking.customer.save(update_fields=[
-                "next_booking_hourly_surcharge",
-                "next_booking_penalty_reason",
-            ])
+            booking.status = Booking.Status.EXPIRED
+            booking.save(update_fields=["status", "updated_at"])
+
+            rental = Rental.objects.select_for_update().filter(booking=booking).first()
+            if rental and rental.status == Rental.Status.READY:
+                rental.status = Rental.Status.CANCELLED
+                rental.save(update_fields=['status', 'updated_at'])
+
+            if booking.bike.status == booking.bike.Status.RESERVED:
+                booking.bike.status = booking.bike.Status.AVAILABLE
+                booking.bike.save(update_fields=['status'])
+
+            if surcharge > 0:
+                booking.customer.next_booking_hourly_surcharge = surcharge
+                booking.customer.next_booking_penalty_reason = f"Неявка по брони {booking.number}"
+                booking.customer.save(update_fields=[
+                    "next_booking_hourly_surcharge",
+                    "next_booking_penalty_reason",
+                ])
 
         queue_booking_sync(booking)
         notify_booking_event(booking, "no_show")

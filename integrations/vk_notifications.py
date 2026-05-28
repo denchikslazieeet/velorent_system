@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 from urllib.parse import urlencode
@@ -42,10 +43,16 @@ def send_vk_message(user, message):
         logger.exception("VK notification request failed for user %s", user.pk)
         return False
 
-    if '"error"' in body:
-        logger.warning("VK notification failed for user %s: %s", user.pk, body)
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        logger.warning("VK notification returned invalid JSON for user %s: %s", user.pk, body)
         return False
-    return True
+
+    if data.get("error"):
+        logger.warning("VK notification failed for user %s: %s", user.pk, data["error"])
+        return False
+    return "response" in data
 
 
 def booking_url(booking):

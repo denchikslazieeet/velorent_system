@@ -91,6 +91,62 @@ python manage.py seed_demo
 python manage.py runserver
 ```
 
+## PostgreSQL через Docker
+
+В проекте уже есть `psycopg2-binary`, а `docker-compose.yml` поднимает PostgreSQL и передает Django настройки базы через переменные окружения.
+
+```bash
+docker compose up --build
+```
+
+После запуска сайт будет доступен на `http://127.0.0.1:8000/`. Данные PostgreSQL хранятся в volume `postgres_data`.
+
+Для ручного перехода без Docker укажите в `.env`:
+
+```env
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=velorent
+DB_USER=velorent
+DB_PASSWORD=velorent
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+Затем выполните:
+
+```bash
+python manage.py migrate
+python manage.py loaddata backups/sqlite_to_postgres_data.json
+```
+
+Если переносить старые данные не нужно, вместо `loaddata` можно выполнить `python manage.py seed_demo`.
+
+## Production-настройки
+
+Для реального размещения поставьте `DEBUG=False`, задайте длинный случайный `SECRET_KEY`, реальные `ALLOWED_HOSTS` и включите HTTPS-настройки:
+
+```env
+SECURE_SSL_REDIRECT=True
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+SECURE_HSTS_SECONDS=31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+SECURE_HSTS_PRELOAD=True
+USE_X_FORWARDED_PROTO=True
+```
+
+Команда `seed_demo` заблокирована при `DEBUG=False`, если явно не передать `--allow-production`.
+
+## 1С-синхронизация
+
+Каждое изменение брони создает `SyncEvent`. Отправить ожидающие события можно командой:
+
+```bash
+python manage.py send_onec_sync
+```
+
+Для немедленной отправки при создании события включите `ONEC_SYNC_IMMEDIATE=True`. Токен из `ONEC_API_TOKEN` передается во внешний сервис как `Authorization: Bearer ...`.
+
 ## Основные страницы
 
 - Главная: `/`

@@ -338,6 +338,41 @@ class BookingServiceTests(TestCase):
         self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
         self.assertEqual(booking.quoted_price, Decimal("400.00"))
 
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_return_rental_clamps_negative_damage_fee(self):
+        operator = User.objects.create_user(
+            username="operator-return",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2013",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=1),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.ACTIVE,
+        )
+        Rental.objects.create(booking=booking, status=Rental.Status.ACTIVE)
+        self.bike.status = Bike.Status.IN_RENT
+        self.bike.save(update_fields=["status"])
+        self.client.force_login(operator)
+
+        response = self.client.post(reverse("rental-return", kwargs={"pk": booking.pk}), {
+            "damage_fee": "-1000.00",
+            "end_condition": "Без повреждений",
+        })
+
+        booking.refresh_from_db()
+        rental = booking.rental
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+        self.assertEqual(rental.damage_fee, Decimal("0.00"))
+        self.assertGreaterEqual(rental.final_price, Decimal("0.00"))
+
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
         SITE_URL="http://127.0.0.1:8000",

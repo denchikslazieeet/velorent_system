@@ -108,3 +108,78 @@ class OperatorActionApiTests(TestCase):
         self.assertEqual(rental.damage_fee, Decimal("100.00"))
         self.assertEqual(rental.extra_time_fee, Decimal("50.00"))
         self.assertEqual(rental.final_price, Decimal("800.00"))
+        payment = booking.payments.get(kind=Payment.Kind.RENTAL)
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    VK_GROUP_TOKEN="",
+)
+class BookingApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            username="api-customer",
+            phone="79960000011",
+            password="Mechabear1001",
+            role=User.Role.CUSTOMER,
+        )
+        self.location = PickupLocation.objects.create(name="ВелоРент - парк", address="Чита")
+        self.category = BikeCategory.objects.create(name="Городские")
+        self.tariff = Tariff.objects.create(
+            name="Городской",
+            hourly_rate=Decimal("200.00"),
+            daily_rate=Decimal("1200.00"),
+            deposit_amount=Decimal("3000.00"),
+            late_fee_per_hour=Decimal("250.00"),
+        )
+        self.bike = Bike.objects.create(
+            title="API Bike",
+            slug="api-bike",
+            category=self.category,
+            tariff=self.tariff,
+            current_location=self.location,
+            serial_number="API-BIKE-BOOKING",
+        )
+        self.client.force_authenticate(self.customer)
+
+    def test_create_rejects_past_start(self):
+        response = self.client.post(
+            reverse("api-bookings-list"),
+            {
+                "bike": self.bike.pk,
+                "pickup_location": self.location.pk,
+                "start_at": timezone.now() - timedelta(hours=1),
+                "end_at": timezone.now() + timedelta(hours=1),
+                "comment": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("start_at", response.data)
+
+    def test_create_applies_and_clears_no_show_surcharge(self):
+        self.customer.next_booking_hourly_surcharge = Decimal("50.00")
+        self.customer.next_booking_penalty_reason = "Неявка"
+        self.customer.save(update_fields=["next_booking_hourly_surcharge", "next_booking_penalty_reason"])
+        start_at = timezone.now() + timedelta(hours=1)
+
+        response = self.client.post(
+            reverse("api-bookings-list"),
+            {
+                "bike": self.bike.pk,
+                "pickup_location": self.location.pk,
+                "start_at": start_at,
+                "end_at": start_at + timedelta(hours=2),
+                "comment": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        booking = Booking.objects.get(pk=response.data["id"])
+        self.assertEqual(booking.quoted_price, Decimal("500.00"))
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.next_booking_hourly_surcharge, Decimal("0.00"))

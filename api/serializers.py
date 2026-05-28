@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from catalog.models import Bike, Tariff, PickupLocation
 from rentals.models import Booking, Rental
@@ -35,9 +36,39 @@ class BookingReadSerializer(serializers.ModelSerializer):
         ]
 
 class BookingCreateSerializer(serializers.ModelSerializer):
+    bike = serializers.PrimaryKeyRelatedField(
+        queryset=Bike.objects.select_related("tariff").filter(
+            status__in=[Bike.Status.AVAILABLE, Bike.Status.RESERVED],
+            tariff__is_active=True,
+        )
+    )
+    pickup_location = serializers.PrimaryKeyRelatedField(
+        queryset=PickupLocation.objects.filter(is_active=True)
+    )
+
     class Meta:
         model = Booking
         fields = ["bike", "pickup_location", "start_at", "end_at", "comment"]
+
+    def validate(self, attrs):
+        start_at = attrs.get("start_at")
+        end_at = attrs.get("end_at")
+
+        if start_at and timezone.is_naive(start_at):
+            start_at = timezone.make_aware(start_at)
+            attrs["start_at"] = start_at
+
+        if end_at and timezone.is_naive(end_at):
+            end_at = timezone.make_aware(end_at)
+            attrs["end_at"] = end_at
+
+        if start_at and start_at < timezone.now():
+            raise serializers.ValidationError({"start_at": "Нельзя бронировать на прошедшее время."})
+
+        if start_at and end_at and end_at <= start_at:
+            raise serializers.ValidationError({"end_at": "Время возврата должно быть позже начала аренды."})
+
+        return attrs
 
 class RentalSerializer(serializers.ModelSerializer):
     booking = BookingReadSerializer()

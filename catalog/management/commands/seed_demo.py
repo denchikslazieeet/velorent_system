@@ -1,9 +1,10 @@
 from datetime import timedelta
 from decimal import Decimal
 from html import escape
+import os
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db.models import ProtectedError
 from django.utils import timezone
 
@@ -13,7 +14,7 @@ from rentals.models import Booking, Payment, Rental
 from rentals.services import calculate_booking_quote
 
 
-CUSTOMER_PASSWORD = "Mechabear1001"
+CUSTOMER_PASSWORD = os.getenv("DEMO_CUSTOMER_PASSWORD", "Mechabear1001")
 
 
 def keep_or_set(current_value, fallback):
@@ -314,7 +315,17 @@ def create_demo_booking(number, customer, bike, location, start_at, end_at, stat
 class Command(BaseCommand):
     help = "Создает презентационное наполнение ВелоРент: клиентов, велосипеды, брони, аренды и платежи."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--allow-production",
+            action="store_true",
+            help="Allow demo data seeding when DEBUG=False.",
+        )
+
     def handle(self, *args, **options):
+        if not settings.DEBUG and not options["allow_production"]:
+            raise CommandError("seed_demo is blocked when DEBUG=False. Use --allow-production explicitly.")
+
         operator, _ = User.objects.update_or_create(
             username="operator",
             defaults={
