@@ -76,12 +76,22 @@ class BookingViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
     def create(self, request):
-        serializer = BookingCreateSerializer(data=request.data)
+        serializer = BookingCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         start_at = serializer.validated_data["start_at"]
         end_at = serializer.validated_data["end_at"]
 
         with transaction.atomic():
+            user_name_fields = []
+            if not (request.user.first_name or "").strip():
+                request.user.first_name = serializer.validated_data["first_name"].strip()
+                user_name_fields.append("first_name")
+            if not (request.user.last_name or "").strip():
+                request.user.last_name = serializer.validated_data["last_name"].strip()
+                user_name_fields.append("last_name")
+            if user_name_fields:
+                request.user.save(update_fields=user_name_fields)
+
             bike = Bike.objects.select_for_update().select_related("tariff").get(
                 pk=serializer.validated_data["bike"].pk
             )

@@ -47,6 +47,25 @@
         </section>
     {% endif %}
 
+    {% if form.needs_customer_name %}
+    <section class="form-section">
+        <h3>Данные арендатора</h3>
+        <p class="muted">Для оформления договора аренды укажите имя и фамилию. Они сохранятся в вашем профиле.</p>
+        <div class="form-grid grid-2">
+            <div class="form-field">
+                <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+                {% for error in form.first_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="form-field">
+                <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+                {% for error in form.last_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
     <section class="form-section">
         <h3>Когда и где</h3>
         <div class="form-grid grid-3">

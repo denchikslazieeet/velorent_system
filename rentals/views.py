@@ -19,6 +19,7 @@ from dashboard.mixins import OperatorRequiredMixin
 from integrations.services import queue_booking_sync
 from integrations.vk_notifications import notify_booking_event
 from .forms import BookingCancelForm, BookingForm, OperatorBookingForm
+from .contracts import rental_contract_context
 from .models import Booking, Rental, Payment, make_booking_number
 
 
@@ -243,6 +244,11 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
                 initial[field] = value
         return initial
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["customer"] = self.request.user
+        return kwargs
+
     def get_alternative_bikes(self, form):
         start_at = form.cleaned_data.get("start_at")
         end_at = form.cleaned_data.get("end_at")
@@ -284,6 +290,7 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         with transaction.atomic():
+            form.save_customer_name()
             bike = Bike.objects.select_for_update().select_related('tariff').get(pk=self.bike.pk)
             booking = form.save(commit=False)
             booking.number = make_booking_number()
@@ -430,6 +437,15 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
         context['can_mark_no_show'] = can_mark_no_show
         context['no_show_allowed_at'] = no_show_allowed_at
         context['customer_needs_password'] = not booking.customer.has_usable_password()
+        context['can_view_contract'] = (
+            is_operator_user(self.request.user)
+            and booking.customer.document_verified
+            and booking.status in {
+                Booking.Status.CONFIRMED,
+                Booking.Status.ACTIVE,
+                Booking.Status.COMPLETED,
+            }
+        )
 
         duration_hours = booking.duration_hours().quantize(Decimal("1"), rounding=ROUND_CEILING)
         if duration_hours >= 24 and booking.tariff.daily_rate:
@@ -464,6 +480,44 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             context['account_access_code_notice'] = access_code_notice
             del self.request.session['account_access_code_notice']
             self.request.session.modified = True
+        return context
+
+
+class BookingContractView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
+    model = Booking
+    template_name = 'rentals/booking_contract.html'
+    context_object_name = 'booking'
+
+    def get_queryset(self):
+        return (
+            Booking.objects
+            .select_related(
+                'bike',
+                'pickup_location',
+                'customer',
+                'tariff',
+                'rental',
+                'rental__issued_by',
+            )
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.status not in {
+            Booking.Status.CONFIRMED,
+            Booking.Status.ACTIVE,
+            Booking.Status.COMPLETED,
+        }:
+            messages.warning(request, 'Договор доступен после подтверждения бронирования.')
+            return redirect('booking-detail', pk=self.object.pk)
+        if not self.object.customer.document_verified:
+            messages.warning(request, 'Перед печатью договора проверьте документ клиента.')
+            return redirect('booking-detail', pk=self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(rental_contract_context(self.object))
         return context
 
 

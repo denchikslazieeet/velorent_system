@@ -13,6 +13,7 @@ from django.views.generic import TemplateView, ListView, DetailView
 
 from catalog.models import Bike
 from rentals.models import Booking, Rental, Payment
+from rentals.contracts import rental_contract_context
 from accounts.models import AccountAccessCode
 from .mixins import OperatorRequiredMixin
 
@@ -74,6 +75,26 @@ class HomePageView(TemplateView):
 
 class TermsView(TemplateView):
     template_name = 'terms.html'
+
+
+class PrivacyPolicyView(TemplateView):
+    template_name = 'privacy_policy.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['personal_data_email'] = settings.PERSONAL_DATA_EMAIL
+        context['provider_name'] = settings.RENTAL_PROVIDER_NAME
+        context['provider_details'] = settings.RENTAL_PROVIDER_DETAILS
+        return context
+
+
+class ContractTemplateView(TemplateView):
+    template_name = 'rentals/booking_contract.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(rental_contract_context())
+        return context
 
 
 class UserDashboardView(LoginRequiredMixin, TemplateView):

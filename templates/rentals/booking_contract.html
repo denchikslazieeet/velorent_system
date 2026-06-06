@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_template %}Шаблон договора аренды{% else %}Договор {{ contract_number }}{% endif %}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #e5e7eb; color: #111827; font-family: Arial, sans-serif; line-height: 1.45; }
+        .contract-shell { width: min(920px, calc(100% - 32px)); margin: 28px auto; }
+        .contract-actions { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+        .contract-actions a, .contract-actions button { border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #111827; padding: 10px 14px; font: inherit; cursor: pointer; text-decoration: none; }
+        .contract { background: #fff; border: 1px solid #d1d5db; padding: 34px 42px; }
+        h1 { margin: 0; text-align: center; font-size: 22px; }
+        h2 { margin: 24px 0 8px; font-size: 16px; }
+        p { margin: 7px 0; text-align: justify; }
+        .contract-meta { display: flex; justify-content: space-between; gap: 24px; margin: 14px 0 22px; }
+        .details { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .details td { border: 1px solid #d1d5db; padding: 7px 9px; vertical-align: top; }
+        .details td:first-child { width: 34%; color: #4b5563; }
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; margin-top: 42px; }
+        .signature { border-top: 1px solid #111827; padding-top: 7px; font-size: 13px; }
+        @media print {
+            body { background: #fff; }
+            .contract-shell { width: 100%; margin: 0; }
+            .contract-actions { display: none; }
+            .contract { border: 0; padding: 0; }
+        }
+        @media (max-width: 680px) {
+            .contract { padding: 24px 18px; }
+            .contract-meta, .signatures { grid-template-columns: 1fr; display: grid; }
+            p { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+<main class="contract-shell">
+    <div class="contract-actions">
+        {% if is_template %}
+            <a href="{% url 'terms' %}">К условиям аренды</a>
+        {% else %}
+            <a href="{% url 'booking-detail' booking.pk %}">К брони</a>
+        {% endif %}
+        <button type="button" onclick="window.print()">Печать</button>
+    </div>
+
+    <article class="contract">
+        <h1>ДОГОВОР ПРОКАТА ВЕЛОСИПЕДА № {{ contract_number }}</h1>
+        <div class="contract-meta">
+            <span>Место заключения: {{ pickup_location }}</span>
+            <span>Дата: {{ contract_date }}</span>
+        </div>
+
+        <p><strong>{{ provider_name }}</strong>, далее «Арендодатель», в лице {{ operator_name }}, с одной стороны, и <strong>{{ customer_name }}</strong>, далее «Арендатор», с другой стороны, совместно именуемые «Стороны», заключили настоящий договор о нижеследующем.</p>
+
+        <h2>1. Предмет договора</h2>
+        <p>1.1. Арендодатель передает Арендатору во временное владение и пользование велосипед, указанный ниже, а Арендатор обязуется использовать его бережно, своевременно возвратить и оплатить аренду.</p>
+        <table class="details">
+            <tr><td>Велосипед</td><td>{{ bike_title }}</td></tr>
+            <tr><td>Серийный номер</td><td>{{ bike_serial_number }}</td></tr>
+            <tr><td>Точка выдачи</td><td>{{ pickup_location }}, {{ pickup_address }}, тел. {{ pickup_phone }}</td></tr>
+            <tr><td>Срок аренды</td><td>с {{ rental_start }} до {{ rental_end }}</td></tr>
+            <tr><td>Тариф</td><td>{{ tariff_name }}</td></tr>
+            <tr><td>Предварительная стоимость</td><td>{{ quoted_price }} руб.</td></tr>
+            <tr><td>Залог</td><td>{{ deposit_amount }} руб.</td></tr>
+        </table>
+
+        <h2>2. Передача и возврат велосипеда</h2>
+        <p>2.1. До передачи велосипеда Арендодатель проверяет документ, удостоверяющий личность Арендатора, и фиксирует только вид документа и последние четыре цифры.</p>
+        <p>2.2. Арендатор осматривает велосипед при получении и сообщает оператору о замеченных недостатках. Выдача велосипеда означает, что его состояние принято Арендатором с учетом зафиксированных замечаний.</p>
+        <p>2.3. Велосипед должен быть возвращен в согласованное время и в состоянии, соответствующем состоянию при выдаче с учетом нормального износа.</p>
+
+        <h2>3. Права и обязанности Арендатора</h2>
+        <p>3.1. Арендатор обязан соблюдать правила дорожного движения, использовать велосипед по назначению, не передавать его третьим лицам и принимать разумные меры против утраты и повреждения.</p>
+        <p>3.2. При неисправности, аварии, утрате или невозможности своевременного возврата Арендатор обязан незамедлительно связаться с Арендодателем.</p>
+        <p>3.3. Арендатор несет ответственность за повреждения и утрату велосипеда, возникшие по его вине, в пределах документально подтвержденного ущерба.</p>
+
+        <h2>4. Стоимость, залог и ответственность</h2>
+        <p>4.1. Итоговая стоимость определяется по действующему тарифу с учетом фактического времени использования, просрочки и выявленных повреждений.</p>
+        <p>4.2. Залог служит обеспечением обязательств Арендатора и возвращается после возврата велосипеда и завершения расчетов. Залог не ограничивает размер ответственности при ущербе, превышающем его сумму.</p>
+        <p>4.3. Начисления за просрочку и повреждения фиксируются оператором в информационной системе и отражаются в итоговой квитанции.</p>
+
+        <h2>5. Персональные данные</h2>
+        <p>5.1. Персональные данные обрабатываются для заключения и исполнения настоящего договора, идентификации Арендатора, учета аренды и связи по вопросам исполнения обязательств.</p>
+        <p>5.2. Обращения по вопросам обработки персональных данных и отзыв согласия принимаются по адресу {{ privacy_email }}. Отзыв согласия не прекращает обработку, если она необходима для исполнения договора или предусмотрена законодательством.</p>
+
+        <h2>6. Заключительные положения</h2>
+        <p>6.1. Споры разрешаются путем переговоров, а при недостижении соглашения — в порядке, установленном законодательством Российской Федерации.</p>
+        <p>6.2. Договор составлен в двух экземплярах, имеющих равную юридическую силу, по одному для каждой Стороны.</p>
+
+        <h2>7. Данные сторон</h2>
+        <table class="details">
+            <tr><td>Арендодатель</td><td>{{ provider_name }}{% if provider_details %}<br>{{ provider_details }}{% endif %}</td></tr>
+            <tr><td>Арендатор</td><td>{{ customer_name }}</td></tr>
+            <tr><td>Телефон Арендатора</td><td>{{ customer_phone }}</td></tr>
+            <tr><td>Email Арендатора</td><td>{{ customer_email }}</td></tr>
+            <tr><td>Документ</td><td>{{ document_type }}, последние четыре цифры: {{ document_last4 }}</td></tr>
+        </table>
+
+        <div class="signatures">
+            <div class="signature">Арендодатель / оператор: {{ operator_name }} / подпись</div>
+            <div class="signature">Арендатор: {{ customer_name }} / подпись</div>
+        </div>
+    </article>
+</main>
+</body>
+</html>

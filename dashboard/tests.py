@@ -109,3 +109,10 @@ class OperatorDashboardTests(TestCase):
 
         self.assertRedirects(response, reverse("operator-customer-detail", kwargs={"pk": customer.pk}))
         self.assertFalse(AccountAccessCode.objects.filter(user=customer).exists())
+
+    def test_public_legal_documents_are_available(self):
+        privacy_response = self.client.get(reverse("privacy-policy"))
+        contract_response = self.client.get(reverse("contract-template"))
+
+        self.assertContains(privacy_response, "Как отозвать согласие")
+        self.assertContains(contract_response, "ДОГОВОР ПРОКАТА ВЕЛОСИПЕДА")

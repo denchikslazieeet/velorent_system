@@ -84,6 +84,12 @@
                     </form>
                 {% endif %}
 
+                {% if can_view_contract %}
+                    <a href="{% url 'booking-contract' booking.pk %}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">Договор аренды</a>
+                {% elif booking.status == 'confirmed' or booking.status == 'active' or booking.status == 'completed' %}
+                    <span class="muted">Договор станет доступен после проверки документа клиента.</span>
+                {% endif %}
+
                 {% if booking.status == 'pending' %}
                     <form method="post" action="{% url 'booking-confirm' booking.pk %}" class="inline-form">
                         {% csrf_token %}
@@ -218,6 +224,11 @@
                         <span>Проверил</span>
                         <strong>{{ booking.customer.document_verified_by.staff_display|default:"-" }}</strong>
                     </div>
+                    {% if can_view_contract %}
+                        <div class="action-group" style="margin-top: 14px;">
+                            <a href="{% url 'booking-contract' booking.pk %}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Открыть и распечатать договор</a>
+                        </div>
+                    {% endif %}
                 {% else %}
                     <p class="muted">Клиент еще не верифицирован. Перед первой выдачей нужно проверить документ.</p>
 

@@ -177,6 +177,7 @@ def email_verification_context(request, form=None, pending_code=None):
         'pending_password_resend_wait': password_resend_wait_seconds(pending_password_code),
         'vk_community_url': settings.VK_COMMUNITY_URL,
         'vk_group_token_present': bool(settings.VK_GROUP_TOKEN),
+        'personal_data_email': settings.PERSONAL_DATA_EMAIL,
     }
 
 
@@ -451,6 +452,7 @@ class ProfileView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['vk_community_url'] = settings.VK_COMMUNITY_URL
         context['vk_group_token_present'] = bool(settings.VK_GROUP_TOKEN)
+        context['personal_data_email'] = settings.PERSONAL_DATA_EMAIL
         pending_email_code = self.get_pending_email_code()
         pending_password_code = get_pending_password_change_code(self.request.user)
         context['pending_email_code'] = pending_email_code

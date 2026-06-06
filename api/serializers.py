@@ -36,6 +36,8 @@ class BookingReadSerializer(serializers.ModelSerializer):
         ]
 
 class BookingCreateSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(max_length=150, required=False, write_only=True)
+    last_name = serializers.CharField(max_length=150, required=False, write_only=True)
     bike = serializers.PrimaryKeyRelatedField(
         queryset=Bike.objects.select_related("tariff").filter(
             status__in=[Bike.Status.AVAILABLE, Bike.Status.RESERVED],
@@ -48,7 +50,15 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ["bike", "pickup_location", "start_at", "end_at", "comment"]
+        fields = [
+            "first_name",
+            "last_name",
+            "bike",
+            "pickup_location",
+            "start_at",
+            "end_at",
+            "comment",
+        ]
 
     def validate(self, attrs):
         start_at = attrs.get("start_at")
@@ -67,6 +77,13 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
         if start_at and end_at and end_at <= start_at:
             raise serializers.ValidationError({"end_at": "Время возврата должно быть позже начала аренды."})
+
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            if not (request.user.first_name or "").strip() and not (attrs.get("first_name") or "").strip():
+                raise serializers.ValidationError({"first_name": "Укажите имя для оформления договора аренды."})
+            if not (request.user.last_name or "").strip() and not (attrs.get("last_name") or "").strip():
+                raise serializers.ValidationError({"last_name": "Укажите фамилию для оформления договора аренды."})
 
         return attrs
 

@@ -121,6 +121,8 @@ class BookingApiTests(TestCase):
         self.client = APIClient()
         self.customer = User.objects.create_user(
             username="api-customer",
+            first_name="Иван",
+            last_name="Петров",
             phone="79960000011",
             password="Mechabear1001",
             role=User.Role.CUSTOMER,
@@ -183,3 +185,28 @@ class BookingApiTests(TestCase):
         self.assertEqual(booking.quoted_price, Decimal("500.00"))
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.next_booking_hourly_surcharge, Decimal("0.00"))
+
+    def test_create_requires_and_saves_missing_customer_name(self):
+        self.customer.first_name = ""
+        self.customer.last_name = ""
+        self.customer.save(update_fields=["first_name", "last_name"])
+        start_at = timezone.now() + timedelta(hours=1)
+
+        response = self.client.post(
+            reverse("api-bookings-list"),
+            {
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "bike": self.bike.pk,
+                "pickup_location": self.location.pk,
+                "start_at": start_at,
+                "end_at": start_at + timedelta(hours=2),
+                "comment": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.first_name, "Иван")
+        self.assertEqual(self.customer.last_name, "Петров")

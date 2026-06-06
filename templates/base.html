@@ -59,6 +59,7 @@
             {% else %}
                 <a href="/catalog/">Каталог</a>
                 <a href="{% url 'terms' %}">Условия</a>
+                <a href="{% url 'privacy-policy' %}">Персональные данные</a>
                 <a href="/accounts/login/">Войти</a>
                 <a href="/accounts/register/" class="nav-accent">Регистрация</a>
                 <button type="button" class="theme-toggle" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">
@@ -109,6 +110,8 @@
         <div class="footer-brand">
             <strong>ВелоРент</strong>
             <a href="{% url 'terms' %}">Условия аренды</a>
+            <a href="{% url 'privacy-policy' %}">Персональные данные</a>
+            <a href="{% url 'contract-template' %}">Шаблон договора</a>
         </div>
 
         {% if primary_pickup_location %}

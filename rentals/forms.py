@@ -11,6 +11,18 @@ from .models import Booking
 
 
 class BookingForm(forms.ModelForm):
+    first_name = forms.CharField(
+        label="Имя",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Введите имя"}),
+    )
+    last_name = forms.CharField(
+        label="Фамилия",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Введите фамилию"}),
+    )
     duration_hours = forms.IntegerField(
         label="На сколько часов хотите арендовать",
         min_value=1,
@@ -36,8 +48,24 @@ class BookingForm(forms.ModelForm):
             "comment": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, customer=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.customer = customer
+        self.needs_customer_name = bool(
+            customer
+            and (
+                not (customer.first_name or "").strip()
+                or not (customer.last_name or "").strip()
+            )
+        )
+        if self.needs_customer_name:
+            self.fields["first_name"].required = True
+            self.fields["last_name"].required = True
+            self.fields["first_name"].initial = (customer.first_name or "").strip()
+            self.fields["last_name"].initial = (customer.last_name or "").strip()
+        else:
+            self.fields.pop("first_name")
+            self.fields.pop("last_name")
         self.fields["pickup_location"].queryset = PickupLocation.objects.filter(is_active=True)
         self.fields["comment"].widget.attrs.setdefault(
             "placeholder",
@@ -59,6 +87,13 @@ class BookingForm(forms.ModelForm):
                 self.add_error("start_at", "Нельзя бронировать на прошедшее время.")
 
         return cleaned_data
+
+    def save_customer_name(self):
+        if not self.needs_customer_name:
+            return
+        self.customer.first_name = self.cleaned_data["first_name"].strip()
+        self.customer.last_name = self.cleaned_data["last_name"].strip()
+        self.customer.save(update_fields=["first_name", "last_name"])
 
     def save(self, commit=True):
         booking = super().save(commit=False)
@@ -87,17 +122,28 @@ class OperatorBookingForm(BookingForm):
             "comment",
         ]
 
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("customer", None)
+        super().__init__(*args, customer=None, **kwargs)
+
     def clean_customer_phone(self):
         phone = normalize_phone(self.cleaned_data["customer_phone"])
         if len(phone) != 11 or not phone.startswith("7"):
             raise ValidationError("Введите корректный номер телефона.")
         return phone
 
+    def clean_customer_full_name(self):
+        full_name = " ".join(self.cleaned_data["customer_full_name"].split())
+        if len(full_name.split()) < 2:
+            raise ValidationError("Укажите фамилию и имя клиента.")
+        return full_name
+
     def resolve_customer(self, created_by=None):
         phone = self.cleaned_data["customer_phone"]
         full_name = self.cleaned_data["customer_full_name"].strip()
-        first_name = full_name.split()[1] if len(full_name.split()) > 1 else full_name
-        last_name = full_name.split()[0] if len(full_name.split()) > 1 else ""
+        name_parts = full_name.split()
+        first_name = name_parts[1]
+        last_name = name_parts[0]
         customer, created = User.objects.get_or_create(
             phone=phone,
             defaults={
@@ -110,6 +156,16 @@ class OperatorBookingForm(BookingForm):
         if created:
             customer.set_unusable_password()
             customer.save(update_fields=["password"])
+        else:
+            changed_fields = []
+            if not (customer.first_name or "").strip():
+                customer.first_name = first_name[:150]
+                changed_fields.append("first_name")
+            if not (customer.last_name or "").strip():
+                customer.last_name = last_name[:150]
+                changed_fields.append("last_name")
+            if changed_fields:
+                customer.save(update_fields=changed_fields)
 
         self.account_access_code = None
         if not customer.has_usable_password():

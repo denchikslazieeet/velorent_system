@@ -300,16 +300,12 @@
                     {% endif %}
                 </div>
 
-                {% if not vk_group_token_present %}
-                    <p class="muted">Токен сообщества VK еще не настроен, отправка уведомлений пока не активна.</p>
-                {% endif %}
-
                 <form method="post" action="{% url 'vk-unlink' %}" class="inline-form">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-secondary btn-sm">Отвязать VK</button>
                 </form>
             {% else %}
-                <p class="muted">Привяжите VK, чтобы получать уведомления по броням и арендам после настройки сообщества.</p>
+                <p class="muted">Привяжите VK, чтобы получать уведомления по броням и арендам.</p>
                 <a href="{% url 'vk-link' %}" class="btn vk-auth-button">Привязать VK</a>
             {% endif %}
         </section>
@@ -335,6 +331,15 @@
             {% else %}
                 <p class="muted">Процесс верификации пройдет на месте с оператором перед первой выдачей велосипеда.</p>
             {% endif %}
+        </section>
+
+        <section class="card compact-card">
+            <h3>Персональные данные</h3>
+            <p class="muted">Вы можете ознакомиться с правилами обработки данных или направить запрос на отзыв согласия по email.</p>
+            <div class="action-group">
+                <a href="{% url 'privacy-policy' %}" class="btn btn-secondary btn-sm">Открыть политику</a>
+                <a href="mailto:{{ personal_data_email }}?subject=Отзыв согласия на обработку персональных данных" class="btn btn-secondary btn-sm">Написать об отзыве согласия</a>
+            </div>
         </section>
     </aside>
 </section>

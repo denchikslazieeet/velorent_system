@@ -178,6 +178,42 @@ class BookingServiceTests(TestCase):
             form.cleaned_data["start_at"] + timedelta(hours=4),
         )
 
+    def test_booking_form_requires_and_saves_missing_customer_name(self):
+        start_at = timezone.localtime(timezone.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M")
+        form = BookingForm(
+            customer=self.user,
+            data={
+                "first_name": "Иван",
+                "last_name": "Петров",
+                "start_at": start_at,
+                "duration_hours": "4",
+                "pickup_location": self.location.pk,
+                "comment": "",
+            },
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save_customer_name()
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Иван")
+        self.assertEqual(self.user.last_name, "Петров")
+
+    def test_booking_form_rejects_missing_customer_name(self):
+        start_at = timezone.localtime(timezone.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M")
+        form = BookingForm(
+            customer=self.user,
+            data={
+                "start_at": start_at,
+                "duration_hours": "4",
+                "pickup_location": self.location.pk,
+                "comment": "",
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("first_name", form.errors)
+        self.assertIn("last_name", form.errors)
+
     def test_booking_number_is_short_and_readable(self):
         number = make_booking_number()
 
@@ -264,6 +300,107 @@ class BookingServiceTests(TestCase):
 
         self.assertContains(response, "Квитанция по аренде")
         self.assertContains(response, "Печать")
+
+    def test_operator_can_open_filled_contract_for_verified_customer(self):
+        operator = User.objects.create_user(
+            username="operator-contract",
+            first_name="Олег",
+            last_name="Операторов",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        self.user.first_name = "Иван"
+        self.user.last_name = "Петров"
+        self.user.phone = "79960000001"
+        self.user.document_verified = True
+        self.user.document_type = User.DocumentType.PASSPORT
+        self.user.document_last4 = "1234"
+        self.user.save(update_fields=[
+            "first_name",
+            "last_name",
+            "phone",
+            "document_verified",
+            "document_type",
+            "document_last4",
+        ])
+        booking = Booking.objects.create(
+            number="VR-2020",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(operator)
+
+        response = self.client.get(reverse("booking-contract", kwargs={"pk": booking.pk}))
+
+        self.assertContains(response, "ДОГОВОР ПРОКАТА ВЕЛОСИПЕДА")
+        self.assertContains(response, "Иван Петров")
+        self.assertContains(response, "1234")
+        self.assertContains(response, self.bike.serial_number)
+
+    def test_contract_requires_verified_customer_document(self):
+        operator = User.objects.create_user(
+            username="operator-contract-blocked",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2021",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(operator)
+
+        response = self.client.get(reverse("booking-contract", kwargs={"pk": booking.pk}))
+
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+
+    def test_customer_cannot_open_operator_contract(self):
+        self.user.first_name = "Иван"
+        self.user.last_name = "Петров"
+        self.user.document_verified = True
+        self.user.document_type = User.DocumentType.PASSPORT
+        self.user.document_last4 = "1234"
+        self.user.save(update_fields=[
+            "first_name",
+            "last_name",
+            "document_verified",
+            "document_type",
+            "document_last4",
+        ])
+        booking = Booking.objects.create(
+            number="VR-2022",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("booking-contract", kwargs={"pk": booking.pk}))
+
+        self.assertEqual(response.status_code, 403)
 
     @override_settings(VK_GROUP_TOKEN="")
     def test_operator_can_extend_active_rental(self):
