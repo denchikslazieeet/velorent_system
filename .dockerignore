@@ -13,4 +13,3 @@ staticfiles
 *.log
 cloudflared.exe
 ngrok.exe
-
