@@ -10,6 +10,7 @@ env/
 
 # Django/local runtime
 .env
+.env.production
 db.sqlite3
 staticfiles/
 backups/

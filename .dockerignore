@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*.sqlite3
+.env
+.env.production
+backups
+staticfiles
+*.log
+cloudflared.exe
+ngrok.exe
+

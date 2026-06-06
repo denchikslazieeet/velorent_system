@@ -137,6 +137,10 @@ USE_X_FORWARDED_PROTO=True
 
 Команда `seed_demo` заблокирована при `DEBUG=False`, если явно не передать `--allow-production`.
 
+Готовая схема размещения на VPS с PostgreSQL, Gunicorn, Caddy и автоматическим
+HTTPS описана в [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Для неё используются
+`docker-compose.production.yml`, `Caddyfile` и `.env.production.example`.
+
 ## 1С-синхронизация
 
 Каждое изменение брони создает `SyncEvent`. Отправить ожидающие события можно командой:

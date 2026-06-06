@@ -20,6 +20,14 @@ def env_int(name, default=0):
     return int(value)
 
 
+def env_list(name, default=""):
+    return [
+        value.strip()
+        for value in os.getenv(name, default).split(",")
+        if value.strip()
+    ]
+
+
 DEBUG = env_bool("DEBUG", True)
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
@@ -29,14 +37,11 @@ if not SECRET_KEY:
         raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG=False.")
 if not DEBUG and SECRET_KEY in {"unsafe-secret-key", "unsafe-dev-secret-key-change-me", "change-me"}:
     raise ImproperlyConfigured("Set a strong SECRET_KEY before running with DEBUG=False.")
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv(
-        "ALLOWED_HOSTS",
-        "127.0.0.1,localhost,192.168.0.14,.trycloudflare.com,.ngrok-free.app,.lhr.life"
-    ).split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = env_list(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,192.168.0.14,.trycloudflare.com,.ngrok-free.app,.lhr.life",
+)
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -103,6 +108,7 @@ else:
             "PASSWORD": os.getenv("DB_PASSWORD", "velorent"),
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
+            "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
         }
     }
 
