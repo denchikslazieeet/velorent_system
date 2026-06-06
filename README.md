@@ -141,6 +141,10 @@ USE_X_FORWARDED_PROTO=True
 HTTPS описана в [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). Для неё используются
 `docker-compose.production.yml`, `Caddyfile` и `.env.production.example`.
 
+Развёртывание на виртуальном хостинге REG.RU Host-0 через Passenger и MySQL,
+включая перенос текущих данных PostgreSQL, описано в
+[`docs/REG_RU_HOSTING.md`](docs/REG_RU_HOSTING.md).
+
 ## 1С-синхронизация
 
 Каждое изменение брони создает `SyncEvent`. Отправить ожидающие события можно командой:

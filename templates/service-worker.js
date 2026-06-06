@@ -1,6 +1,8 @@
 {% load static %}
 const CACHE_NAME = "velorent-pwa-v29";
 const OFFLINE_URL = "{% url 'offline' %}";
+const STATIC_PREFIX = new URL("{% static '' %}", self.location.origin).pathname;
+const STYLE_URL = new URL("{% static 'css/style.css' %}", self.location.origin).pathname;
 const STATIC_ASSETS = [
   OFFLINE_URL,
   "{% static 'css/style.css' %}?v=20260522-1",
@@ -42,7 +44,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.origin === self.location.origin && url.pathname === "/static/css/style.css") {
+  if (url.origin === self.location.origin && url.pathname === STYLE_URL) {
     event.respondWith(
       fetch(event.request, { cache: "no-cache" }).then((response) => {
         const copy = response.clone();
@@ -53,7 +55,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.origin === self.location.origin && url.pathname.startsWith("/static/")) {
+  if (url.origin === self.location.origin && url.pathname.startsWith(STATIC_PREFIX)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) {

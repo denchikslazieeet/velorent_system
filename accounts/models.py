@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Q
 from django.utils import timezone
 
 
@@ -21,7 +20,7 @@ class User(AbstractUser):
         DRIVER_LICENSE = "driver_license", "Водительское удостоверение"
         OTHER = "other", "Иной документ"
 
-    phone = models.CharField("Телефон", max_length=20, blank=True)
+    phone = models.CharField("Телефон", max_length=20, blank=True, null=True, unique=True)
     role = models.CharField("Роль", max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     telegram = models.CharField("Telegram", max_length=64, blank=True)
     vk_id = models.CharField("VK ID", max_length=32, unique=True, null=True, blank=True)
@@ -96,13 +95,10 @@ class User(AbstractUser):
     class Meta:
         verbose_name = "user"
         verbose_name_plural = "users"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["phone"],
-                condition=~Q(phone=""),
-                name="unique_non_blank_user_phone",
-            )
-        ]
+
+    def save(self, *args, **kwargs):
+        self.phone = (self.phone or "").strip() or None
+        super().save(*args, **kwargs)
 
 
 class AccountAccessCode(models.Model):

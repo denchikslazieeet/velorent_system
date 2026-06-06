@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -11,20 +12,20 @@
             document.documentElement.dataset.theme = savedTheme || (prefersLight ? "light" : "dark");
         })();
     </script>
-    <link rel="icon" type="image/svg+xml" href="/static/img/velorent-icon.svg">
-    <link rel="apple-touch-icon" href="/static/img/pwa-icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/velorent-icon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/pwa-icon-192.png' %}">
     <link rel="manifest" href="{% url 'webmanifest' %}">
     <meta name="theme-color" content="#0b1220" id="theme-color-meta">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ВелоРент">
-    <link rel="stylesheet" href="/static/css/style.css?v=20260522-1">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260522-1">
 </head>
 <body class="{% if request.user.is_authenticated and request.user.role == 'operator' or request.user.is_authenticated and request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}operator-shell{% elif request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'register' or request.resolver_match.url_name == 'account-claim' or request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'bike-detail' or request.resolver_match.url_name == 'user-dashboard' %}client-art-shell{% endif %}">
 <header class="site-header">
     <div class="container nav">
         <a href="/" class="brand" aria-label="ВелоРент">
-            <img src="/static/img/velorent-logo.svg" alt="ВелоРент" class="brand-logo">
+            <img src="{% static 'img/velorent-logo.svg' %}" alt="ВелоРент" class="brand-logo">
         </a>
 
         <nav class="nav-links">

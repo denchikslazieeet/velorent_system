@@ -100,17 +100,21 @@ if db_engine == "django.db.backends.sqlite3":
         }
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": db_engine,
-            "NAME": os.getenv("DB_NAME", "velorent"),
-            "USER": os.getenv("DB_USER", "velorent"),
-            "PASSWORD": os.getenv("DB_PASSWORD", "velorent"),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-            "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
-        }
+    database_config = {
+        "ENGINE": db_engine,
+        "NAME": os.getenv("DB_NAME", "velorent"),
+        "USER": os.getenv("DB_USER", "velorent"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "velorent"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
     }
+    if db_engine == "django.db.backends.mysql":
+        database_config["OPTIONS"] = {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
+    DATABASES = {"default": database_config}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -122,11 +126,11 @@ TIME_ZONE = "Asia/Chita"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = os.getenv("STATIC_URL", "/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+STATIC_ROOT = BASE_DIR / os.getenv("STATIC_ROOT", "staticfiles")
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
+MEDIA_ROOT = BASE_DIR / os.getenv("MEDIA_ROOT", "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"

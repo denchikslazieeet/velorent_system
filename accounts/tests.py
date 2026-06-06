@@ -75,6 +75,15 @@ class UserLoginTests(TestCase):
                 role=User.Role.CUSTOMER,
             )
 
+    def test_multiple_users_may_have_no_phone(self):
+        first = User.objects.create_user(username="staff-one", phone="")
+        second = User.objects.create_user(username="staff-two")
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertIsNone(first.phone)
+        self.assertIsNone(second.phone)
+
     def test_customer_can_login_by_phone_even_when_username_is_not_phone(self):
         User.objects.create_user(
             username="customer01",
