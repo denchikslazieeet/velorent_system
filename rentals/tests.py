@@ -344,6 +344,7 @@ class BookingServiceTests(TestCase):
         self.assertContains(response, "Иван Петров")
         self.assertContains(response, "1234")
         self.assertContains(response, self.bike.serial_number)
+        self.assertContains(response, "Законный представитель Арендатора 14-17 лет")
 
     def test_contract_requires_verified_customer_document(self):
         operator = User.objects.create_user(
@@ -551,6 +552,86 @@ class BookingServiceTests(TestCase):
         self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
         self.assertEqual(rental.damage_fee, Decimal("0.00"))
         self.assertGreaterEqual(rental.final_price, Decimal("0.00"))
+
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_issue_rental_records_qr_deposit(self):
+        operator = User.objects.create_user(
+            username="operator-qr-deposit",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        self.user.document_verified = True
+        self.user.document_type = User.DocumentType.PASSPORT
+        self.user.document_last4 = "1234"
+        self.user.save(update_fields=["document_verified", "document_type", "document_last4"])
+        booking = Booking.objects.create(
+            number="VR-2024",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now(),
+            end_at=timezone.now() + timedelta(hours=2),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=booking)
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+        self.client.force_login(operator)
+
+        response = self.client.post(
+            reverse("rental-issue", kwargs={"pk": booking.pk}),
+            {"deposit_method": Payment.Method.QR},
+        )
+
+        self.assertRedirects(response, reverse("operator-dashboard"))
+        deposit = booking.payments.get(kind=Payment.Kind.DEPOSIT)
+        self.assertEqual(deposit.method, Payment.Method.QR)
+
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_confirm_payment_records_qr_and_refund(self):
+        operator = User.objects.create_user(
+            username="operator-qr-payment",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        booking = Booking.objects.create(
+            number="VR-2025",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=3),
+            end_at=timezone.now() - timedelta(hours=1),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.COMPLETED,
+        )
+        Rental.objects.create(
+            booking=booking,
+            status=Rental.Status.COMPLETED,
+            final_price=Decimal("400.00"),
+        )
+        rental_payment = Payment.objects.create(
+            booking=booking,
+            amount=Decimal("400.00"),
+            kind=Payment.Kind.RENTAL,
+            status=Payment.Status.PENDING,
+        )
+        self.client.force_login(operator)
+
+        response = self.client.post(
+            reverse("confirm-rental-payment", kwargs={"pk": booking.pk}),
+            {"method": Payment.Method.QR},
+        )
+
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+        rental_payment.refresh_from_db()
+        self.assertEqual(rental_payment.method, Payment.Method.QR)
+        refund = booking.payments.get(kind=Payment.Kind.REFUND)
+        self.assertEqual(refund.method, Payment.Method.QR)
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",

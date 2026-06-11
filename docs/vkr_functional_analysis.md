@@ -200,7 +200,7 @@
 
 Где находится в коде:
 
-- `rentals/models.py`: модель `Payment`, виды `rental`, `deposit`, `refund`, `fine`, методы `cash`, `card`, `online`, статусы `pending`, `paid`, `failed`.
+- `rentals/models.py`: модель `Payment`, виды `rental`, `deposit`, `refund`, `fine`, рабочие методы оплаты `cash` и `qr`, а также архивные значения `card` и `online`; статусы `pending`, `paid`, `failed`.
 - `catalog/models.py`: `Tariff.deposit_amount`, `Tariff.late_fee_per_hour`, `Tariff.hourly_rate`, `Tariff.daily_rate`.
 - `rentals/services.py`: `calculate_booking_quote`, `compute_late_fee`.
 - `rentals/views.py`: `IssueRentalView`, `ReturnRentalView`, `ConfirmRentalPaymentView`, `receipt_totals`.

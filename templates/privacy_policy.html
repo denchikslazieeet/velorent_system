@@ -49,7 +49,12 @@
 <section class="card compact-card" style="margin-top: 20px;">
     <h3>Сведения об операторе данных</h3>
     <p><strong>{{ provider_name }}</strong></p>
-    {% if provider_details %}<p>{{ provider_details }}</p>{% endif %}
+    {% if provider_inn %}<p>ИНН: {{ provider_inn }}</p>{% endif %}
+    {% if provider_ogrnip %}<p>ОГРНИП: {{ provider_ogrnip }}</p>{% endif %}
+    {% if provider_registration_details %}<p>{{ provider_registration_details }}</p>{% endif %}
+    <p>Адрес для обращений: {{ provider_address }}</p>
+    <p>Телефон: <a href="tel:{{ provider_phone_uri }}" class="text-link">{{ provider_phone }}</a></p>
+    <p>Email: <a href="mailto:{{ provider_email }}" class="text-link">{{ provider_email }}</a></p>
     <p>Обращения по персональным данным: <a href="mailto:{{ personal_data_email }}" class="text-link">{{ personal_data_email }}</a></p>
 </section>
 {% endblock %}

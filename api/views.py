@@ -37,9 +37,9 @@ def parse_money(value, default="0"):
 
 
 def normalize_payment_method(value):
-    if value in {Payment.Method.CASH, Payment.Method.CARD, Payment.Method.ONLINE}:
+    if value in {Payment.Method.CASH, Payment.Method.QR}:
         return value
-    return Payment.Method.CARD
+    return Payment.Method.CASH
 
 
 class BikeViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):

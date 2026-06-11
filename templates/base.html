@@ -115,6 +115,18 @@
             <a href="{% url 'contract-template' %}">Шаблон договора</a>
         </div>
 
+        <div class="footer-legal">
+            <strong>{{ rental_provider_name }}</strong>
+            {% if rental_provider_inn %}<span>ИНН {{ rental_provider_inn }}</span>{% endif %}
+            {% if rental_provider_ogrnip %}<span>ОГРНИП {{ rental_provider_ogrnip }}</span>{% endif %}
+            {% if rental_provider_registration_details %}
+                <span>{{ rental_provider_registration_details }}</span>
+            {% endif %}
+            <span>Адрес для обращений: {{ rental_provider_address }}</span>
+            <a href="tel:{{ rental_provider_phone_uri }}">{{ rental_provider_phone }}</a>
+            <a href="mailto:{{ rental_provider_email }}">{{ rental_provider_email }}</a>
+        </div>
+
         {% if primary_pickup_location %}
             <div class="footer-location">
                 <div>

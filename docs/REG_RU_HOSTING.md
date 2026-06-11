@@ -152,6 +152,13 @@ touch .restart-app
 OPERATOR_NOTIFICATION_EMAILS=velo-rent.official@yandex.com
 ```
 
+После обновления реквизитов выполните команду, чтобы установить публичный
+адрес и телефон основной точки выдачи, сохранив действующий режим работы:
+
+```bash
+/var/www/u3539071/data/velorentenv/bin/python manage.py configure_business_location
+```
+
 В ISPmanager откройте `Планировщик CRON` и добавьте две задачи с запуском
 каждые 10 минут:
 

@@ -87,8 +87,9 @@ class Payment(models.Model):
 
     class Method(models.TextChoices):
         CASH = "cash", "Наличные"
-        CARD = "card", "Карта"
-        ONLINE = "online", "Онлайн"
+        QR = "qr", "QR-код"
+        CARD = "card", "Карта (архив)"
+        ONLINE = "online", "Онлайн (архив)"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Ожидает оплаты"
@@ -98,7 +99,7 @@ class Payment(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="payments")
     amount = models.DecimalField("Сумма", max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     kind = models.CharField("Тип платежа", max_length=20, choices=Kind.choices)
-    method = models.CharField("Метод оплаты", max_length=20, choices=Method.choices, default=Method.CARD)
+    method = models.CharField("Метод оплаты", max_length=20, choices=Method.choices, default=Method.CASH)
     status = models.CharField("Статус", max_length=20, choices=Status.choices, default=Status.PENDING)
     external_id = models.CharField("Внешний ID", max_length=120, blank=True)
     created_at = models.DateTimeField("Создано", auto_now_add=True)

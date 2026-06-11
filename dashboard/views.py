@@ -85,6 +85,15 @@ class PrivacyPolicyView(TemplateView):
         context['personal_data_email'] = settings.PERSONAL_DATA_EMAIL
         context['provider_name'] = settings.RENTAL_PROVIDER_NAME
         context['provider_details'] = settings.RENTAL_PROVIDER_DETAILS
+        context['provider_inn'] = settings.RENTAL_PROVIDER_INN
+        context['provider_ogrnip'] = settings.RENTAL_PROVIDER_OGRNIP
+        context['provider_registration_details'] = settings.RENTAL_PROVIDER_REGISTRATION_DETAILS
+        context['provider_address'] = settings.RENTAL_PROVIDER_ADDRESS
+        context['provider_phone'] = settings.RENTAL_PROVIDER_PHONE
+        context['provider_phone_uri'] = (
+            f"+{''.join(character for character in settings.RENTAL_PROVIDER_PHONE if character.isdigit())}"
+        )
+        context['provider_email'] = settings.RENTAL_PROVIDER_EMAIL
         return context
 
 

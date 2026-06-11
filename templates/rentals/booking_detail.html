@@ -100,6 +100,12 @@
                 {% if booking.status == 'confirmed' %}
                     <form method="post" action="{% url 'rental-issue' booking.pk %}" class="inline-form">
                         {% csrf_token %}
+                        {% if booking.deposit_amount %}
+                            <select name="deposit_method" class="table-input compact-select" aria-label="Способ внесения залога">
+                                <option value="cash">Залог наличными</option>
+                                <option value="qr">Залог по QR-коду</option>
+                            </select>
+                        {% endif %}
                         <button type="submit" class="btn btn-primary btn-sm">Выдать велосипед</button>
                     </form>
                 {% endif %}
@@ -123,8 +129,7 @@
                         {% csrf_token %}
                         <select name="method" class="table-input compact-select">
                             <option value="cash">Наличные</option>
-                            <option value="card">Карта</option>
-                            <option value="online">Онлайн</option>
+                            <option value="qr">QR-код</option>
                         </select>
                         <button type="submit" class="btn btn-primary btn-sm">Оплата получена</button>
                     </form>
@@ -207,6 +212,7 @@
         <summary>Документ клиента</summary>
         <div class="detail-grid">
             {% if request.user.role == 'operator' or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser %}
+                <p class="muted">Если клиенту от 14 до 17 лет, до выдачи получите письменное согласие законного представителя и приложите его к договору.</p>
                 {% if booking.customer.document_verified %}
                     <div class="list-row">
                         <span>Статус</span>

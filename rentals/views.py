@@ -740,11 +740,14 @@ class IssueRentalView(LoginRequiredMixin, OperatorRequiredMixin, DetailView):
             booking.bike.save(update_fields=['status'])
 
             if booking.deposit_amount:
+                deposit_method = request.POST.get('deposit_method') or Payment.Method.CASH
+                if deposit_method not in {Payment.Method.CASH, Payment.Method.QR}:
+                    deposit_method = Payment.Method.CASH
                 Payment.objects.create(
                     booking=booking,
                     amount=booking.deposit_amount,
                     kind=Payment.Kind.DEPOSIT,
-                    method=Payment.Method.CARD,
+                    method=deposit_method,
                     status=Payment.Status.PAID,
                 )
 
@@ -908,8 +911,7 @@ class ConfirmRentalPaymentView(LoginRequiredMixin, OperatorRequiredMixin, View):
             method = request.POST.get('method') or Payment.Method.CASH
             if method not in {
                 Payment.Method.CASH,
-                Payment.Method.CARD,
-                Payment.Method.ONLINE,
+                Payment.Method.QR,
             }:
                 method = Payment.Method.CASH
 

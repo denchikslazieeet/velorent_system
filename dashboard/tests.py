@@ -1,7 +1,8 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -110,9 +111,47 @@ class OperatorDashboardTests(TestCase):
         self.assertRedirects(response, reverse("operator-customer-detail", kwargs={"pk": customer.pk}))
         self.assertFalse(AccountAccessCode.objects.filter(user=customer).exists())
 
+    @override_settings(
+        RENTAL_PROVIDER_NAME="ИП Ким Юрий Брониславович",
+        RENTAL_PROVIDER_OGRNIP="323750000053480",
+    )
     def test_public_legal_documents_are_available(self):
         privacy_response = self.client.get(reverse("privacy-policy"))
         contract_response = self.client.get(reverse("contract-template"))
+        terms_response = self.client.get(reverse("terms"))
 
         self.assertContains(privacy_response, "Как отозвать согласие")
+        self.assertContains(privacy_response, "323750000053480")
         self.assertContains(contract_response, "ДОГОВОР ПРОКАТА ВЕЛОСИПЕДА")
+        self.assertContains(contract_response, "ИП Ким Юрий Брониславович")
+        self.assertContains(terms_response, "Клиенты от 14 до 17 лет")
+        self.assertContains(terms_response, "Кассовый чек предоставляется")
+
+    @override_settings(
+        RENTAL_PROVIDER_NAME="ИП Ким Юрий Брониславович",
+        RENTAL_PROVIDER_INN="750536889872",
+        RENTAL_PROVIDER_OGRNIP="323750000053480",
+        RENTAL_PROVIDER_ADDRESS="г. Чита, ул. Бутина, д. 50",
+    )
+    def test_footer_contains_public_business_details(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, "ИП Ким Юрий Брониславович")
+        self.assertContains(response, "ИНН 750536889872")
+        self.assertContains(response, "ОГРНИП 323750000053480")
+        self.assertContains(response, "г. Чита, ул. Бутина, д. 50")
+
+    @override_settings(
+        RENTAL_PROVIDER_ADDRESS="г. Чита, ул. Бутина, д. 50",
+        RENTAL_PROVIDER_PHONE="+7 914 123-23-33",
+    )
+    def test_configure_business_location_preserves_opening_hours(self):
+        self.location.opening_hours = "10:00-22:00"
+        self.location.save(update_fields=["opening_hours"])
+
+        call_command("configure_business_location")
+
+        self.location.refresh_from_db()
+        self.assertEqual(self.location.address, "г. Чита, ул. Бутина, д. 50")
+        self.assertEqual(self.location.phone, "+7 914 123-23-33")
+        self.assertEqual(self.location.opening_hours, "10:00-22:00")

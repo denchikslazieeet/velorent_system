@@ -83,6 +83,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.unread_notifications",
                 "accounts.context_processors.primary_pickup_location",
+                "accounts.context_processors.business_details",
             ],
         },
     },
@@ -161,8 +162,28 @@ EMAIL_MAX_ATTEMPTS = env_int("EMAIL_MAX_ATTEMPTS", 5)
 BOOKING_PICKUP_REMINDER_HOURS = env_int("BOOKING_PICKUP_REMINDER_HOURS", 24)
 BOOKING_RETURN_REMINDER_HOURS = env_int("BOOKING_RETURN_REMINDER_HOURS", 2)
 BOOKING_OVERDUE_NOTIFY_AFTER_MINUTES = env_int("BOOKING_OVERDUE_NOTIFY_AFTER_MINUTES", 15)
-RENTAL_PROVIDER_NAME = os.getenv("RENTAL_PROVIDER_NAME", "ВелоРент")
-RENTAL_PROVIDER_DETAILS = os.getenv("RENTAL_PROVIDER_DETAILS", "")
+RENTAL_PROVIDER_NAME = os.getenv("RENTAL_PROVIDER_NAME", "ИП Ким Юрий Брониславович")
+RENTAL_PROVIDER_INN = os.getenv("RENTAL_PROVIDER_INN", "750536889872")
+RENTAL_PROVIDER_OGRNIP = os.getenv("RENTAL_PROVIDER_OGRNIP", "323750000053480")
+RENTAL_PROVIDER_REGISTRATION_DETAILS = os.getenv(
+    "RENTAL_PROVIDER_REGISTRATION_DETAILS",
+    "Зарегистрирован 21.11.2023 Управлением ФНС по Забайкальскому краю",
+)
+RENTAL_PROVIDER_ADDRESS = os.getenv(
+    "RENTAL_PROVIDER_ADDRESS",
+    "г. Чита, ул. Бутина, д. 50",
+)
+RENTAL_PROVIDER_PHONE = os.getenv("RENTAL_PROVIDER_PHONE", "+7 914 123-23-33")
+RENTAL_PROVIDER_EMAIL = os.getenv("RENTAL_PROVIDER_EMAIL", "velogetwoke@yandex.ru")
+RENTAL_PROVIDER_DETAILS = os.getenv(
+    "RENTAL_PROVIDER_DETAILS",
+    (
+        "ИНН 750536889872; ОГРНИП 323750000053480; зарегистрирован 21.11.2023 "
+        "Управлением ФНС по Забайкальскому краю; адрес для обращений: "
+        "г. Чита, ул. Бутина, д. 50; телефон: +7 914 123-23-33; "
+        "email: velogetwoke@yandex.ru"
+    ),
+)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
