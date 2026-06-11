@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import timedelta
 from django.core import mail
+from django.core.management import call_command
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
@@ -115,7 +116,7 @@ class BookingServiceTests(TestCase):
         self.assertContains(detail_response, "Период брони не найден")
         self.assertContains(detail_response, "Выбрать время")
 
-    def test_reserved_bike_with_stale_confirmed_booking_still_shows_end_time(self):
+    def test_reserved_bike_with_stale_confirmed_booking_does_not_show_past_end_time(self):
         start_at = timezone.now() - timedelta(hours=5)
         end_at = timezone.now() - timedelta(hours=2)
         Booking.objects.create(
@@ -133,8 +134,70 @@ class BookingServiceTests(TestCase):
 
         response = self.client.get(reverse("bike-detail", kwargs={"slug": self.bike.slug}))
 
-        self.assertContains(response, "Свободен после")
-        self.assertEqual(bike_next_available_at(self.bike), end_at)
+        self.assertNotContains(response, "Свободен после")
+        self.assertContains(response, "Период брони не найден")
+        self.assertIsNone(bike_next_available_at(self.bike))
+
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_expire_stale_bookings_command_releases_reserved_bike(self):
+        booking = Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=5),
+            end_at=timezone.now() - timedelta(hours=2),
+            status=Booking.Status.CONFIRMED,
+        )
+        rental = Rental.objects.create(booking=booking, status=Rental.Status.READY)
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        call_command("expire_stale_bookings")
+
+        booking.refresh_from_db()
+        rental.refresh_from_db()
+        self.bike.refresh_from_db()
+        self.assertEqual(booking.status, Booking.Status.EXPIRED)
+        self.assertEqual(rental.status, Rental.Status.CANCELLED)
+        self.assertEqual(self.bike.status, Bike.Status.AVAILABLE)
+
+    @override_settings(VK_GROUP_TOKEN="")
+    def test_expire_stale_bookings_keeps_bike_reserved_for_future_booking(self):
+        stale_booking = Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() - timedelta(hours=5),
+            end_at=timezone.now() - timedelta(hours=2),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=stale_booking, status=Rental.Status.READY)
+        future_booking = Booking.objects.create(
+            number=make_booking_number(),
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=2),
+            end_at=timezone.now() + timedelta(hours=4),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=future_booking, status=Rental.Status.READY)
+        self.bike.status = Bike.Status.RESERVED
+        self.bike.save(update_fields=["status"])
+
+        call_command("expire_stale_bookings")
+
+        stale_booking.refresh_from_db()
+        future_booking.refresh_from_db()
+        self.bike.refresh_from_db()
+        self.assertEqual(stale_booking.status, Booking.Status.EXPIRED)
+        self.assertEqual(future_booking.status, Booking.Status.CONFIRMED)
+        self.assertEqual(self.bike.status, Bike.Status.RESERVED)
 
     def test_quote_rounds_started_hour_up(self):
         start_at = timezone.now()

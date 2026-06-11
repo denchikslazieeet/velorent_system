@@ -24,6 +24,7 @@ OPERATOR_EVENTS = {
     "completed",
     "cancelled",
     "no_show",
+    "expired",
     "payment_paid",
     "document_verified",
     "return_overdue",
@@ -128,6 +129,11 @@ def build_booking_message(booking, event):
             f"Бронь отмечена как неявка.\n{common}\n"
             f"Надбавка к следующей аренде: {format_amount(surcharge)} ₽ за час"
         )
+    if event == "expired":
+        return (
+            f"Срок бронирования истёк, бронь автоматически закрыта.\n{common}\n"
+            "Если велосипед всё ещё нужен, создайте новую бронь на свободное время."
+        )
     if event == "payment_paid":
         rental_payment = booking.payments.filter(
             kind="rental",
@@ -183,6 +189,7 @@ def build_booking_title(booking, event):
         "completed": f"Аренда {booking.number} завершена",
         "cancelled": f"Бронь {booking.number} отменена",
         "no_show": f"Неявка по брони {booking.number}",
+        "expired": f"Срок брони {booking.number} истёк",
         "payment_paid": f"Оплата по брони {booking.number} подтверждена",
         "document_verified": f"Документ по брони {booking.number} проверен",
         "pickup_reminder": f"Напоминание о выдаче по брони {booking.number}",
@@ -204,7 +211,7 @@ def create_site_notification(booking, event, title, message):
         "document_verified",
     }:
         level = UserNotification.Level.SUCCESS
-    if event in {"cancelled", "no_show", "return_reminder", "return_overdue"}:
+    if event in {"cancelled", "no_show", "expired", "return_reminder", "return_overdue"}:
         level = UserNotification.Level.WARNING
 
     return UserNotification.objects.create(
@@ -235,7 +242,7 @@ def create_operator_booking_notifications(booking, event, title, message):
     message = operator_booking_message(booking, message)
     url = booking_url(booking)
     level = UserNotification.Level.INFO
-    if event in {"cancelled", "no_show", "return_overdue"}:
+    if event in {"cancelled", "no_show", "expired", "return_overdue"}:
         level = UserNotification.Level.WARNING
 
     return [

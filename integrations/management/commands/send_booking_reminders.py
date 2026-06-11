@@ -5,8 +5,10 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from integrations.models import BookingNotificationEvent
-from integrations.vk_notifications import notify_booking_event_once
+from integrations.services import queue_booking_sync
+from integrations.vk_notifications import notify_booking_event, notify_booking_event_once
 from rentals.models import Booking
+from rentals.services import expire_stale_bookings
 
 
 class Command(BaseCommand):
@@ -15,6 +17,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         now = timezone.now()
         sent = 0
+        expired = expire_stale_bookings(now)
+        for booking in expired:
+            queue_booking_sync(booking)
+            notify_booking_event(booking, "expired")
 
         pickup_bookings = Booking.objects.filter(
             status=Booking.Status.CONFIRMED,
@@ -59,4 +65,8 @@ class Command(BaseCommand):
             ):
                 sent += 1
 
-        self.stdout.write(self.style.SUCCESS(f"Создано уведомлений: {sent}."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Истекших броней закрыто: {len(expired)}. Создано уведомлений: {sent}."
+            )
+        )

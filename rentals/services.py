@@ -1,7 +1,10 @@
 from decimal import Decimal, ROUND_CEILING
+
+from django.db import transaction
 from django.utils import timezone
+
 from catalog.models import Bike
-from .models import Booking
+from .models import Booking, Rental
 
 
 def billable_hours_between(start_at, end_at):
@@ -56,16 +59,11 @@ ACTIVE_BOOKING_STATUSES = [
 
 def bike_reservation_booking(bike: Bike, from_at=None):
     from_at = from_at or timezone.now()
-    bookings = Booking.objects.filter(
+    return Booking.objects.filter(
         bike=bike,
         status__in=ACTIVE_BOOKING_STATUSES,
-    )
-
-    next_booking = bookings.filter(end_at__gt=from_at).order_by("start_at", "end_at").first()
-    if next_booking:
-        return next_booking
-
-    return bookings.order_by("-end_at").first()
+        end_at__gt=from_at,
+    ).order_by("start_at", "end_at").first()
 
 
 def bike_next_available_at(bike: Bike, from_at=None):
@@ -73,6 +71,60 @@ def bike_next_available_at(bike: Bike, from_at=None):
     if reservation:
         return reservation.end_at
     return None
+
+
+def expire_stale_bookings(now=None):
+    now = now or timezone.now()
+    with transaction.atomic():
+        stale_bookings = list(
+            Booking.objects
+            .select_for_update()
+            .select_related("bike", "customer", "pickup_location")
+            .filter(
+                status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED],
+                end_at__lte=now,
+            )
+            .order_by("end_at")
+        )
+        if not stale_bookings:
+            return []
+
+        booking_ids = [booking.pk for booking in stale_bookings]
+        bike_ids = {booking.bike_id for booking in stale_bookings}
+        reason = "Срок бронирования истёк автоматически."
+
+        Booking.objects.filter(pk__in=booking_ids).update(
+            status=Booking.Status.EXPIRED,
+            cancellation_reason=reason,
+            updated_at=now,
+        )
+        Rental.objects.filter(
+            booking_id__in=booking_ids,
+            status=Rental.Status.READY,
+        ).update(
+            status=Rental.Status.CANCELLED,
+            updated_at=now,
+        )
+
+        bikes = Bike.objects.select_for_update().filter(
+            pk__in=bike_ids,
+            status__in=[Bike.Status.AVAILABLE, Bike.Status.RESERVED],
+        )
+        for bike in bikes:
+            has_future_reservation = Booking.objects.filter(
+                bike=bike,
+                status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED],
+                end_at__gt=now,
+            ).exists()
+            target_status = Bike.Status.RESERVED if has_future_reservation else Bike.Status.AVAILABLE
+            if bike.status != target_status:
+                bike.status = target_status
+                bike.save(update_fields=["status"])
+
+        for booking in stale_bookings:
+            booking.status = Booking.Status.EXPIRED
+            booking.cancellation_reason = reason
+        return stale_bookings
 
 
 def compute_late_fee(booking, actual_end_at):
