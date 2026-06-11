@@ -4,8 +4,8 @@
 
 {% block content %}
 <section class="hero hero-centered home-video-hero">
-    <video class="home-video-bg" autoplay muted loop playsinline preload="metadata" poster="{% static 'img/velorent-logo.svg' %}">
-        <source src="{% static 'video/home-hero.mp4' %}" type="video/mp4">
+    <video class="home-video-bg" muted loop playsinline preload="none" poster="{% static 'img/velorent-logo.svg' %}" data-home-video>
+        <source data-src="{% static 'video/home-hero.mp4' %}" type="video/mp4">
     </video>
     <div class="home-video-overlay" aria-hidden="true"></div>
     <div class="hero-main hero-main-centered">
@@ -31,4 +31,33 @@
         {% endif %}
     </div>
 </section>
+
+<script>
+    (function () {
+        const video = document.querySelector("[data-home-video]");
+        const source = video && video.querySelector("source[data-src]");
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const slowConnection = connection && /(^|-)2g$/.test(connection.effectiveType || "");
+        const saveData = connection && connection.saveData;
+        const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        if (!video || !source || slowConnection || saveData || reducedMotion) {
+            return;
+        }
+
+        const loadVideo = function () {
+            source.src = source.dataset.src;
+            video.load();
+            video.play().catch(function () {});
+        };
+
+        window.addEventListener("load", function () {
+            if ("requestIdleCallback" in window) {
+                window.requestIdleCallback(loadVideo, { timeout: 1500 });
+                return;
+            }
+            window.setTimeout(loadVideo, 500);
+        }, { once: true });
+    })();
+</script>
 {% endblock %}

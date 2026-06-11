@@ -141,6 +141,13 @@ class OperatorDashboardTests(TestCase):
         self.assertContains(response, "ОГРНИП 323750000053480")
         self.assertContains(response, "г. Чита, ул. Бутина, д. 50")
 
+    def test_home_video_load_is_deferred(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, 'preload="none"')
+        self.assertContains(response, 'data-src="/static/video/home-hero.mp4"')
+        self.assertNotContains(response, '<source src="/static/video/home-hero.mp4"')
+
     @override_settings(
         RENTAL_PROVIDER_ADDRESS="г. Чита, ул. Бутина, д. 50",
         RENTAL_PROVIDER_PHONE="+7 914 123-23-33",

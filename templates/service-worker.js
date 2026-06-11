@@ -1,5 +1,5 @@
 {% load static %}
-const CACHE_NAME = "velorent-pwa-v29";
+const CACHE_NAME = "velorent-pwa-v30";
 const OFFLINE_URL = "{% url 'offline' %}";
 const STATIC_PREFIX = new URL("{% static '' %}", self.location.origin).pathname;
 const STYLE_URL = new URL("{% static 'css/style.css' %}", self.location.origin).pathname;
@@ -8,7 +8,6 @@ const STATIC_ASSETS = [
   "{% static 'css/style.css' %}?v=20260522-1",
   "{% static 'img/velorent-icon.svg' %}",
   "{% static 'img/velorent-logo.svg' %}",
-  "{% static 'img/page-bike-bg.png' %}",
   "{% static 'img/page-bike-bg.svg' %}",
   "{% static 'img/pwa-icon-192.png' %}",
   "{% static 'img/pwa-icon-512.png' %}"
@@ -36,11 +35,16 @@ self.addEventListener("fetch", (event) => {
   }
 
   const url = new URL(event.request.url);
+  const isVideo = event.request.destination === "video" || url.pathname.endsWith(".mp4");
 
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(OFFLINE_URL))
     );
+    return;
+  }
+
+  if (isVideo) {
     return;
   }
 
