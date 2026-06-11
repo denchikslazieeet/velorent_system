@@ -23,6 +23,7 @@ from .forms import (
 )
 from .models import EmailVerificationCode, PasswordChangeCode, User, UserNotification
 from .vk_oauth import VKOAuthError, build_authorize_url, exchange_code, get_user_profile
+from integrations.email_delivery import send_email_reliably
 from integrations.vk_notifications import send_vk_message
 
 
@@ -612,6 +613,15 @@ class PasswordChangeConfirmView(LoginRequiredMixin, View):
         form.password_code.mark_used()
         user.password_change_codes.filter(used_at__isnull=True).update(used_at=timezone.now())
         update_session_auth_hash(request, user)
+        send_email_reliably(
+            user.email,
+            "ВелоРент: пароль успешно изменён",
+            (
+                "Пароль вашей учётной записи ВелоРент успешно изменён.\n\n"
+                "Если это сделали не вы, немедленно свяжитесь с оператором ВелоРент."
+            ),
+            kind="password_changed",
+        )
         messages.success(request, "Пароль изменен.")
         return redirect('profile')
 

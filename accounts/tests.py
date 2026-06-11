@@ -266,6 +266,8 @@ class PasswordChangeByEmailTests(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.check_password("NewPass123"))
         self.assertFalse(PasswordChangeCode.objects.filter(user=user, used_at__isnull=True).exists())
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn("пароль успешно изменён", mail.outbox[1].subject.lower())
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_password_change_requires_verified_email(self):
@@ -370,8 +372,17 @@ class UserNotificationTests(TestCase):
         self.assertTrue(result["email_sent"])
         self.assertFalse(result["vk_sent"])
         self.assertEqual(self.user.notifications.filter(read_at__isnull=True).count(), 1)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Бронь VR-1001 подтверждена", mail.outbox[0].subject)
+        self.assertEqual(len(mail.outbox), 2)
+        customer_email = next(
+            message for message in mail.outbox if message.to == ["customer@example.com"]
+        )
+        operator_email = next(
+            message
+            for message in mail.outbox
+            if message.to == ["velo-rent.official@yandex.com"]
+        )
+        self.assertIn("Бронь VR-1001 подтверждена", customer_email.subject)
+        self.assertIn("оператору", operator_email.subject.lower())
 
     @override_settings(
         EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",

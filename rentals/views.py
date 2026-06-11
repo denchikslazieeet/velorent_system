@@ -645,6 +645,7 @@ class VerifyCustomerDocumentView(LoginRequiredMixin, OperatorRequiredMixin, View
             'document_verified_by',
         ])
 
+        notify_booking_event(booking, "document_verified")
         messages.success(request, f'Клиент {customer.full_name_or_phone} успешно верифицирован.')
         return redirect('booking-detail', pk=booking.pk)
 

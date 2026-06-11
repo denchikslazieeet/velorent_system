@@ -144,7 +144,30 @@ touch .restart-app
 После проверки удалите fixture с сервера или перенесите его в защищённое
 резервное хранилище: он содержит персональные данные.
 
-## 9. Настроить второй домен
+## 9. Настроить уведомления по расписанию
+
+В `.env` укажите общий адрес операторов:
+
+```text
+OPERATOR_NOTIFICATION_EMAILS=velo-rent.official@yandex.com
+```
+
+В ISPmanager откройте `Планировщик CRON` и добавьте две задачи с запуском
+каждые 10 минут:
+
+```bash
+cd /var/www/u3539071/data/www/velo-rent-chita.ru && /var/www/u3539071/data/velorentenv/bin/python manage.py send_booking_reminders
+```
+
+```bash
+cd /var/www/u3539071/data/www/velo-rent-chita.ru && /var/www/u3539071/data/velorentenv/bin/python manage.py send_pending_emails
+```
+
+Первая задача отправляет одноразовые напоминания клиентам перед выдачей и
+возвратом, а также предупреждает операторов о просрочке. Вторая повторяет
+отправку писем после временных ошибок SMTP.
+
+## 10. Настроить второй домен
 
 После запуска основного сайта настройте постоянное перенаправление
 `velo-rent-chita.online` на `https://velo-rent-chita.ru`. Не запускайте две

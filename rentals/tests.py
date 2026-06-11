@@ -370,6 +370,48 @@ class BookingServiceTests(TestCase):
 
         self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
 
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        OPERATOR_NOTIFICATION_EMAILS=["velo-rent.official@yandex.com"],
+        VK_GROUP_TOKEN="",
+    )
+    def test_document_verification_notifies_customer_and_operator(self):
+        operator = User.objects.create_user(
+            username="operator-verification",
+            role=User.Role.OPERATOR,
+            password="12345678",
+        )
+        self.user.email = "client@example.com"
+        self.user.email_verified_at = timezone.now()
+        self.user.save(update_fields=["email", "email_verified_at"])
+        booking = Booking.objects.create(
+            number="VR-2023",
+            customer=self.user,
+            bike=self.bike,
+            pickup_location=self.location,
+            tariff=self.tariff,
+            start_at=timezone.now() + timedelta(hours=1),
+            end_at=timezone.now() + timedelta(hours=3),
+            quoted_price=Decimal("400.00"),
+            deposit_amount=Decimal("3000.00"),
+            status=Booking.Status.CONFIRMED,
+        )
+        Rental.objects.create(booking=booking)
+        self.client.force_login(operator)
+
+        response = self.client.post(reverse("verify-customer", kwargs={"pk": booking.pk}), {
+            "first_name": "Иван",
+            "last_name": "Петров",
+            "document_type": User.DocumentType.PASSPORT,
+            "document_last4": "1234",
+        })
+
+        self.user.refresh_from_db()
+        self.assertRedirects(response, reverse("booking-detail", kwargs={"pk": booking.pk}))
+        self.assertTrue(self.user.document_verified)
+        self.assertTrue(self.user.notifications.filter(title__contains="Документ").exists())
+        self.assertEqual(len(mail.outbox), 2)
+
     def test_customer_cannot_open_operator_contract(self):
         self.user.first_name = "Иван"
         self.user.last_name = "Петров"
@@ -551,5 +593,14 @@ class BookingServiceTests(TestCase):
         self.assertRedirects(response, reverse("operator-dashboard"))
         self.assertEqual(booking.status, Booking.Status.CANCELLED)
         self.assertIn("Прокат уже закрыт", booking.cancellation_reason)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Прокат уже закрыт", mail.outbox[0].body)
+        self.assertEqual(len(mail.outbox), 2)
+        customer_email = next(
+            message for message in mail.outbox if message.to == ["customer@example.com"]
+        )
+        operator_email = next(
+            message
+            for message in mail.outbox
+            if message.to == ["velo-rent.official@yandex.com"]
+        )
+        self.assertIn("Прокат уже закрыт", customer_email.body)
+        self.assertIn("Прокат уже закрыт", operator_email.body)
